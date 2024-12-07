@@ -1,0 +1,5 @@
+# Place your passwords here and uncomment the lines as needed.
+# instagram:username:pass
+# mastodon:username:pass
+# threads:username:pass
+# bluesky:username:pass
