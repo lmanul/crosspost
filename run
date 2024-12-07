@@ -1,0 +1,40 @@
+#!/usr/bin/python
+
+import getpass
+import os
+import shlex
+import subprocess
+
+CONFIG_FILE = "config.txt"
+
+# This is for Manu's own usage
+def prime_config_file():
+    if getpass.getuser() != "manucornet":
+        return
+    os.system("rm -f " + CONFIG_FILE)
+    config_content = ""
+    for service in [
+        "bsky",
+        "instagram",
+        "mastodon",
+    ]:
+        output = subprocess.check_output(shlex.split("p " + service + " stdout")).decode()
+        chunks = output.strip().split("\t")
+        config_content += chunks[0] + ":" + chunks[1] + "\n"
+    with open(CONFIG_FILE, "w") as f:
+        f.write(config_content)
+
+def cleanup():
+    if getpass.getuser() == "manucornet":
+        os.system("git checkout " + CONFIG_FILE)
+
+def do_cross_post():
+    os.system("npm run start")
+
+def main():
+    prime_config_file()
+    do_cross_post()
+    cleanup()
+
+if __name__ == "__main__":
+    main()

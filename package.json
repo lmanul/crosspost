@@ -4,6 +4,7 @@
   "description": "Cross-post on social sites",
   "main": "index.ts",
   "scripts": {
+    "start": "ts-node index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Manu Cornet",
