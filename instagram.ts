@@ -20,9 +20,9 @@ export default class InstagramPoster extends Poster {
       await notNowButton.click();
       await page.waitForNavigation();
     }
-    notNowButton = await page.waitForSelector('text/Not Now');
-    if (notNowButton) {
-      await notNowButton.click();
-    }
+    // notNowButton = await page.waitForSelector('text/Not Now');
+    // if (notNowButton) {
+    //   await notNowButton.click();
+    // }
   };
 }

@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer';
-import { type Page } from 'puppeteer';
+import { type Browser, type Page } from 'puppeteer';
 
 const delay = (seconds) => {
   return new Promise(resolve => setTimeout(resolve, seconds * 1000));
@@ -14,7 +14,7 @@ const makeBrowserWindow = async () => {
   return browser;
 };
 
-const newTabInBrowser = async (browser) => {
+const newTabInBrowser = async (browser: Browser) => {
   const page: Page = await browser.newPage();
   await page.setViewport({width: 1080, height: 1024});
   return page;
