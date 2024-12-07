@@ -20,7 +20,7 @@ def prime_config_file():
     ]:
         output = subprocess.check_output(shlex.split("p " + service + " stdout")).decode()
         chunks = output.strip().split("\t")
-        config_content += chunks[0] + ":" + chunks[1] + "\n"
+        config_content += service + ":" + chunks[0] + ":" + chunks[1] + "\n"
     with open(CONFIG_FILE, "w") as f:
         f.write(config_content)
 
