@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer';
 import Poster from './poster';
+import { type Page } from 'puppeteer';
 
 export default class InstagramPoster extends Poster {
 
@@ -26,5 +27,8 @@ export default class InstagramPoster extends Poster {
   override loadNewPostPage = async (page) => {
     const newPostButton = await page.waitForSelector('[aria-label="New post"]');
     await newPostButton.click();
+  };
+
+  addMainText = async (page: Page, text: string) => {
   };
 }

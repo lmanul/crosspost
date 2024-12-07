@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import { type Page } from 'puppeteer';
 import Poster from './poster';
 
 export default class ThreadsPoster extends Poster {
@@ -9,10 +10,7 @@ export default class ThreadsPoster extends Poster {
 
   override login = async (page, user, password) => {
     const signInButton = await page.waitForSelector('text/Log in');
-    if (signInButton) {
-      await signInButton.click();
-      // await page.waitForNavigation({waitUntil: 'domcontentloaded'});
-    }
+    await signInButton.click();
     await page.waitForSelector('input[type="text"]');
     await page.type('input[type="text"]', user);
     await page.type('input[type="password"]', password);
@@ -31,4 +29,8 @@ export default class ThreadsPoster extends Poster {
     }
     */
   }
+
+  override addMainText = async(page: Page, text: string) => {
+    await page.type('[contenteditable=true][role=textbox]', text);
+  };
 }

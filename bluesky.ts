@@ -1,4 +1,5 @@
 import Poster from './poster';
+import { type Page } from 'puppeteer';
 
 export default class BlueskyPoster extends Poster {
   constructor() {
@@ -24,4 +25,7 @@ export default class BlueskyPoster extends Poster {
     const composeButton = await page.waitForSelector('[aria-label="New post"]');
     await composeButton.click();
   }
+
+  override addMainText = async(page: Page, text: string) => {
+  };
 }

@@ -15,6 +15,10 @@ export default class Poster {
     return page;
   }
 
-  login = async (page: Page, user: string, password: string) => {}
-  loadNewPostPage = async (page: Page) => {}
+  login = async (page: Page, user: string, password: string) => {};
+  loadNewPostPage = async (page: Page) => {};
+
+  addMainText = async (page: Page, text: string) => {
+    await page.type('[contenteditable=true][role=textbox]', text);
+  };
 };

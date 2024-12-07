@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import { type Page } from 'puppeteer';
 import Poster from './poster';
 
 export default class MastodonPoster extends Poster {
@@ -26,4 +27,9 @@ export default class MastodonPoster extends Poster {
       await newPostButton.click();
     }
   };
+
+  override addMainText = async(page: Page, text: string) => {
+    await page.type('textarea', text);
+  };
+
 };

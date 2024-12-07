@@ -26,6 +26,7 @@ const main = async () => {
     await poster.loadInitialPage(tab);
     await poster.login(tab, config[poster.name][0], config[poster.name][1]);
     await poster.loadNewPostPage(tab);
+    await poster.addMainText(tab, 'This is a test');
   }
 };
 
