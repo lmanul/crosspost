@@ -15,14 +15,11 @@ export default class InstagramPoster extends Poster {
       page.keyboard.press('Enter');
       await page.waitForNavigation();
     }
+    // "Save your login info"?
     let notNowButton = await page.waitForSelector('text/Not now');
     if (notNowButton) {
       await notNowButton.click();
       await page.waitForNavigation();
     }
-    // notNowButton = await page.waitForSelector('text/Not Now');
-    // if (notNowButton) {
-    //   await notNowButton.click();
-    // }
   };
 }

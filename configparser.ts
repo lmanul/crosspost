@@ -12,7 +12,12 @@ const parseConfig = async (fileName) => {
       continue;
     }
     const parts = line.split(':', 3);
-    parsed[parts[0]] = [parts[1], parts[2]];
+    const serviceName = parts[0];
+    parsed[serviceName] = [parts[1], parts[2]];
+    if (serviceName === 'instagram') {
+      // Instagram and Threads share login info
+      parsed['threads'] = [parts[1], parts[2]];
+    }
   }
 
   return parsed;

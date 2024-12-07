@@ -5,6 +5,7 @@ import InstagramPoster from './instagram';
 import MastodonPoster from './mastodon';
 import { type Page } from 'puppeteer';
 import BlueskyPoster from './bluesky';
+import ThreadsPoster from './threads';
 
 const main = async () => {
 
@@ -13,10 +14,10 @@ const main = async () => {
     new BlueskyPoster(),
     new InstagramPoster(),
     new MastodonPoster(),
+    new ThreadsPoster
   ];
 
   const config = await parseConfig('config.txt');
-  console.log('Config', config);
 
   const browser = await makeBrowserWindow();
 
