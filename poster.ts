@@ -2,9 +2,11 @@ import puppeteer from 'puppeteer';
 import { type Page } from 'puppeteer';
 
 export default class Poster {
+  name: string;
   baseUrl: string;
 
-  constructor(baseUrl) {
+  constructor(name, baseUrl) {
+    this.name = name;
     this.baseUrl = baseUrl;
   }
 
