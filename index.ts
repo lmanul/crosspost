@@ -14,7 +14,7 @@ const main = async () => {
     new BlueskyPoster(),
     new InstagramPoster(),
     new MastodonPoster(),
-    new ThreadsPoster
+    new ThreadsPoster(),
   ];
 
   const config = await parseConfig('config.txt');
@@ -25,6 +25,7 @@ const main = async () => {
     const tab: Page = await newTabInBrowser(browser);
     await poster.loadInitialPage(tab);
     await poster.login(tab, config[poster.name][0], config[poster.name][1]);
+    await poster.loadNewPostPage(tab);
   }
 };
 

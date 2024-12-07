@@ -22,4 +22,9 @@ export default class InstagramPoster extends Poster {
       await page.waitForNavigation();
     }
   };
+
+  override loadNewPostPage = async (page) => {
+    const newPostButton = await page.waitForSelector('[aria-label="New post"]');
+    await newPostButton.click();
+  };
 }

@@ -11,9 +11,7 @@ export default class ThreadsPoster extends Poster {
     const signInButton = await page.waitForSelector('text/Log in');
     if (signInButton) {
       await signInButton.click();
-      await page.waitForNavigation({waitUntil: 'domcontentloaded'});
-    } else {
-      console.log('No sign in button!');
+      // await page.waitForNavigation({waitUntil: 'domcontentloaded'});
     }
     await page.waitForSelector('input[type="text"]');
     await page.type('input[type="text"]', user);
@@ -21,4 +19,16 @@ export default class ThreadsPoster extends Poster {
     page.keyboard.press('Enter');
     await page.waitForNavigation();
   };
+
+  override loadNewPostPage = async (page) => {
+    const field = await page.waitForSelector('text/What\'s new?');
+    await field.click();
+    /* Fediverse consent, happened before.
+    const fediOk = await page.waitForSelector('text/Continue sharing');
+    console.log('Fedi ok? ', fediOk);
+    if (fediOk) {
+      await fediOk.click();
+    }
+    */
+  }
 }
