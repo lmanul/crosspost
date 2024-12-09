@@ -33,7 +33,6 @@ export default class ThreadsPoster extends Poster {
 
     // Clicking on the SVG itself doesn't seem to work. Let's click on the parent.
     const parentEl = await addButton.getProperty('parentElement');
-    console.log(parentEl);
 
     const [fileChooser] = await Promise.all([
       page.waitForFileChooser(),
