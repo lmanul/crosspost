@@ -36,8 +36,14 @@ const main = async () => {
     await poster.loadInitialPage(tab);
     await poster.login(tab, config[poster.name][0], config[poster.name][1]);
     await poster.loadNewPostPage(tab);
-    await poster.addMainText(tab, 'This is a test');
+    await poster.addMainText(tab, bundle.mainText);
 
+    if (bundle.images.length > 0) {
+      for (let image of bundle.images) {
+        await poster.addOneImage(tab, image.imagePath);
+        await poster.addImageDescription(tab, image.imageDescription);
+      }
+    }
   }
 };
 

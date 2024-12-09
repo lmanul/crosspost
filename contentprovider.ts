@@ -37,7 +37,7 @@ export default class ContentProvider {
         fileList.sort();
         const imgPaths = fileList.filter(f => f.endsWith('.jpg') || f.endsWith('.png'));
         const images: ContentImage[] = imgPaths.map(p => ({
-            imagePath: p,
+            imagePath: __dirname + '/' + this.contentDir + '/' + p,
             imageDescription: '',
         }));
 

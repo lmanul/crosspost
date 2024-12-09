@@ -1,13 +1,16 @@
-import puppeteer from 'puppeteer';
 import { type Page } from 'puppeteer';
 
 export default class Poster {
   name: string;
   baseUrl: string;
+  uploadedImageCount: number;
+  addedImageDescriptionCount: number;
 
   constructor(name, baseUrl) {
     this.name = name;
     this.baseUrl = baseUrl;
+    this.uploadedImageCount = 0;
+    this.addedImageDescriptionCount = 0;
   }
 
   loadInitialPage = async (page: Page) => {
