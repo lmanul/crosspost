@@ -41,7 +41,7 @@ export default class ContentProvider {
             imageDescription: '',
         }));
 
-        if (fileList.includes(DESCRIPTIONS_FILENAME)) {
+        if (imgPaths.length > 0 && fileList.includes(DESCRIPTIONS_FILENAME)) {
             const descriptions = await readFile(descFile, 'utf-8').then(raw => {
                 return raw.split('\n\n').map(s => s.trim()).filter(s => s != '');
             });
@@ -53,7 +53,6 @@ export default class ContentProvider {
             for (let i = 0; i < descriptions.length; i++) {
                 images[i].imageDescription = descriptions[i];
             }
-
         }
 
         return {

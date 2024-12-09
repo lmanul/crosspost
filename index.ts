@@ -32,6 +32,10 @@ const main = async () => {
 
   console.log('Posting...');
   for (let poster of posters) {
+    if (poster instanceof InstagramPoster && bundle.images.length === 0) {
+      console.log('No images detected, skipping Instagram.');
+      continue;
+    }
     const tab: Page = await newTabInBrowser(browser);
     await poster.loadInitialPage(tab);
     await poster.login(tab, config[poster.name][0], config[poster.name][1]);
@@ -44,11 +48,9 @@ const main = async () => {
         await poster.addImageDescription(tab, image.imageDescription);
       }
     }
-
-    // For the time being, don't actually post, but give the user some time
-    // to commit.
-    await delay(5 * 60);
   }
+  console.log('For the time being, I will not actually hit "Post". Sleeping for 5 minutes to allow you to do so.');
+  await delay(5 * 60);
 };
 
 main();

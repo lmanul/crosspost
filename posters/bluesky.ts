@@ -22,7 +22,6 @@ export default class BlueskyPoster extends Poster {
     const pField = await page.waitForSelector('[autocomplete="password"]');
     await pField.type(password);
     page.keyboard.press('Enter');
-    await page.waitForNavigation();
   };
 
   override loadNewPostPage = async (page) => {

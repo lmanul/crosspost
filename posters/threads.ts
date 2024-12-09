@@ -13,7 +13,6 @@ export default class ThreadsPoster extends Poster {
     await page.type('input[type="text"]', user);
     await page.type('input[type="password"]', password);
     page.keyboard.press('Enter');
-    await page.waitForNavigation();
   };
 
   override loadNewPostPage = async (page) => {

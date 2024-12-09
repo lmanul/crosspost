@@ -20,14 +20,11 @@ export default class MastodonPoster extends Poster {
     await page.type('#user_email', user);
     await page.type('#user_password', password);
     page.keyboard.press('Enter');
-    await page.waitForNavigation();
   };
 
   override loadNewPostPage = async (page) => {
     const newPostButton = await page.waitForSelector('text/New post');
-    if (newPostButton) {
-      await newPostButton.click();
-    }
+    await newPostButton.click();
   };
 
   override addMainText = async(page: Page, text: string) => {
