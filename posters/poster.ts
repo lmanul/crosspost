@@ -3,18 +3,20 @@ import { type Page } from 'puppeteer';
 export default class Poster {
   name: string;
   baseUrl: string;
+  initialPageLoadTimeOutSeconds: number;
   uploadedImageCount: number;
   addedImageDescriptionCount: number;
 
   constructor(name, baseUrl) {
     this.name = name;
     this.baseUrl = baseUrl;
+    this.initialPageLoadTimeOutSeconds = 30;
     this.uploadedImageCount = 0;
     this.addedImageDescriptionCount = 0;
   }
 
   loadInitialPage = async (page: Page) => {
-    await page.goto(this.baseUrl);
+    await page.goto(this.baseUrl, { timeout: this.initialPageLoadTimeOutSeconds * 1000 });
     console.log('Posting on ' + this.name + '...');
     return page;
   }

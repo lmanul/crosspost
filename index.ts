@@ -1,5 +1,5 @@
 import parseConfig from './configparser';
-import {makeBrowserWindow, newTabInBrowser} from './util';
+import { delay, makeBrowserWindow, newTabInBrowser} from './util';
 import { type Page } from 'puppeteer';
 
 import InstagramPoster from './posters/instagram';
@@ -44,6 +44,10 @@ const main = async () => {
         await poster.addImageDescription(tab, image.imageDescription);
       }
     }
+
+    // For the time being, don't actually post, but give the user some time
+    // to commit.
+    await delay(5 * 60);
   }
 };
 
