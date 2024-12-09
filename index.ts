@@ -6,6 +6,9 @@ import InstagramPoster from './posters/instagram';
 import MastodonPoster from './posters/mastodon';
 import BlueskyPoster from './posters/bluesky';
 import ThreadsPoster from './posters/threads';
+import ContentProvider from './contentprovider';
+
+const CONTENT_DIR = 'content';
 
 const main = async () => {
 
@@ -21,12 +24,20 @@ const main = async () => {
 
   const browser = await makeBrowserWindow();
 
+  const bundle = await (new ContentProvider(CONTENT_DIR).getContent());
+
+  if (bundle.images.length > 0) {
+    console.log(`Found ${bundle.images.length} images to attach`);
+  }
+
+  console.log('Posting...');
   for (let poster of posters) {
     const tab: Page = await newTabInBrowser(browser);
     await poster.loadInitialPage(tab);
     await poster.login(tab, config[poster.name][0], config[poster.name][1]);
     await poster.loadNewPostPage(tab);
     await poster.addMainText(tab, 'This is a test');
+
   }
 };
 

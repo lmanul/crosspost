@@ -9,7 +9,7 @@ export default class ThreadsPoster extends Poster {
   }
 
   override login = async (page, user, password) => {
-    const signInButton = await page.waitForSelector('text/Log in');
+    const signInButton = await page.waitForSelector('text/Log in', { visible: true });
     await signInButton.click();
     await page.waitForSelector('input[type="text"]');
     await page.type('input[type="text"]', user);

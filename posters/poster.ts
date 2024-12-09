@@ -12,6 +12,7 @@ export default class Poster {
 
   loadInitialPage = async (page: Page) => {
     await page.goto(this.baseUrl);
+    console.log('Posting on ' + this.name + '...');
     return page;
   }
 
@@ -21,4 +22,7 @@ export default class Poster {
   addMainText = async (page: Page, text: string) => {
     await page.type('[contenteditable=true][role=textbox]', text);
   };
+
+  addOneImage = async (page: Page, imgPath: string) => {};
+  addImageDescription = async (page: Page, description: string) => {};
 };
