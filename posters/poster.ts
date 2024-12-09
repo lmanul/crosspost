@@ -1,5 +1,7 @@
 import { type Page } from 'puppeteer';
 
+const INPUT_FIELD_SELECTOR = '[contenteditable=true][role=textbox]';
+
 export default class Poster {
   name: string;
   baseUrl: string;
@@ -25,7 +27,8 @@ export default class Poster {
   loadNewPostPage = async (page: Page) => {};
 
   addMainText = async (page: Page, text: string) => {
-    await page.type('[contenteditable=true][role=textbox]', text);
+    await page.waitForSelector(INPUT_FIELD_SELECTOR);
+    await page.type(INPUT_FIELD_SELECTOR, text);
   };
 
   addOneImage = async (page: Page, imgPath: string) => {};
