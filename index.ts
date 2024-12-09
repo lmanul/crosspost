@@ -1,11 +1,11 @@
 import parseConfig from './configparser';
 import {makeBrowserWindow, newTabInBrowser} from './util';
-
-import InstagramPoster from './instagram';
-import MastodonPoster from './mastodon';
 import { type Page } from 'puppeteer';
-import BlueskyPoster from './bluesky';
-import ThreadsPoster from './threads';
+
+import InstagramPoster from './posters/instagram';
+import MastodonPoster from './posters/mastodon';
+import BlueskyPoster from './posters/bluesky';
+import ThreadsPoster from './posters/threads';
 
 const main = async () => {
 
