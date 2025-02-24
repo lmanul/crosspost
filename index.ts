@@ -1,6 +1,6 @@
 import parseConfig from './configparser';
 import { delay, makeBrowserWindow, newTabInBrowser} from './util';
-import { type Page } from 'puppeteer';
+import { type Page, type TimeoutError } from 'puppeteer';
 
 import InstagramPoster from './posters/instagram';
 import MastodonPoster from './posters/mastodon';
@@ -9,6 +9,8 @@ import ThreadsPoster from './posters/threads';
 import ContentProvider from './contentprovider';
 
 const CONTENT_DIR = 'content';
+
+const DEBUG = false;
 
 const main = async () => {
 
@@ -37,20 +39,26 @@ const main = async () => {
       continue;
     }
     const tab: Page = await newTabInBrowser(browser);
-    await poster.loadInitialPage(tab);
-    await poster.login(tab, config[poster.name][0], config[poster.name][1]);
-    await poster.loadNewPostPage(tab);
-    await poster.addMainText(tab, bundle.mainText);
 
-    if (bundle.images.length > 0) {
-      for (let image of bundle.images) {
-        await poster.addOneImage(tab, image.imagePath);
-        await poster.addImageDescription(tab, image.imageDescription);
+    try {
+      await poster.loadInitialPage(tab);
+      await poster.login(tab, config[poster.name][0], config[poster.name][1]);
+      await poster.loadNewPostPage(tab);
+      await poster.addMainText(tab, bundle.mainText);
+
+      if (bundle.images.length > 0) {
+        for (let image of bundle.images) {
+          await poster.addOneImage(tab, image.imagePath);
+          await poster.addImageDescription(tab, image.imageDescription);
+        }
+      }
+    } catch (e) {
+      if (!DEBUG) {
+        console.log('Error with ' + poster.name + ', skipping to next');
       }
     }
   }
-  console.log('For the time being, I will not actually hit "Post". Sleeping for 5 minutes to allow you to do so.');
-  await delay(5 * 60);
+  console.log('For the time being, I will not actually hit "Post". Please verify first!');
 };
 
 main();
