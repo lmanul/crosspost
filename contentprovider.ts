@@ -5,7 +5,7 @@ type ContentImage = {
     imageDescription: string;
 }
 
-type ContentBundle = {
+export type ContentBundle = {
     mainText: string;
     images: ContentImage[];
 }
@@ -13,7 +13,7 @@ type ContentBundle = {
 const DESCRIPTIONS_FILENAME = 'descriptions.txt';
 const MAIN_TEXT_FILENAME = 'main.txt';
 
-export default class ContentProvider {
+export class ContentProvider {
     contentDir: string;
 
     constructor(contentDir: string) {
@@ -56,7 +56,8 @@ export default class ContentProvider {
         }
 
         return {
-            mainText, images
+            mainText: mainText.trim(),
+            images
         };
     };
 };

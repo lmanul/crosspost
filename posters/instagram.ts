@@ -1,6 +1,6 @@
-import puppeteer from 'puppeteer';
 import Poster from './poster';
-import { type Page } from 'puppeteer';
+import { TimeoutError, type Page } from 'puppeteer';
+import { delay } from '../util';
 
 export default class InstagramPoster extends Poster {
 
@@ -40,8 +40,9 @@ export default class InstagramPoster extends Poster {
     if (this.uploadedImageCount === 0) {
       fileChooserButton = await page.waitForSelector('text/Select From Computer');
     } else {
-      fileChooserButton = await page.waitForSelector('[aria-label="Open Media Gallery"]');
-      return;
+      const openMediaGalleryButton = await page.waitForSelector('[aria-label="Open Media Gallery"]');
+      await openMediaGalleryButton.click();
+      fileChooserButton = await page.waitForSelector('[aria-label="Plus icon"]');
     }
     const [fileChooser] = await Promise.all([
         page.waitForFileChooser(),
@@ -57,6 +58,43 @@ export default class InstagramPoster extends Poster {
     console.log('Added ' + this.uploadedImageCount + ' images.');
   };
 
-  addMainText = async (page: Page, text: string) => {
+  override addMainText = async (page: Page, text: string) => {
+    let nextButton = await page.waitForSelector('text/Next');
+    await nextButton.click();
+    // Wait for animation
+    await delay(2);
+    // Once more (ignore filters)
+    nextButton = await page.waitForSelector('text/Next');
+    await nextButton.click();
+    // Wait for animation
+    await delay(2);
+
+    // Also expand the accessibility container for adding descriptions.
+    const accessibilityHeader = await page.waitForSelector('text/Accessibility');
+    await accessibilityHeader.click();
+    // Wait for animation
+    await delay(1);
+  };
+
+  override addImageDescription = async (page: Page, description: string) => {
+
+    const nextEmpty = await page.evaluate(() => {
+      const fields = document.querySelectorAll('input[placeholder="Write alt text..."]');
+      for (let field of fields) {
+        console.log(field);
+        if ((field as HTMLInputElement).value === '') {
+          return field;
+        }
+      }
+      return null;
+    });
+
+    if (nextEmpty) {
+      await (nextEmpty as HTMLInputElement).focus();
+      await page.keyboard.type(description);
+      this.addedImageDescriptionCount++;
+    } else {
+      console.log('Did not find the next empty input for accessibility');
+    }
   };
 }
