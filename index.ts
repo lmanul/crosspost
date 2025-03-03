@@ -42,6 +42,7 @@ const main = async () => {
 
     try {
       await poster.loadInitialPage(tab);
+      await poster.maybeDismissDisclaimers(tab);
       await poster.login(tab, config[poster.name][0], config[poster.name][1]);
       await poster.loadNewPostPage(tab);
 

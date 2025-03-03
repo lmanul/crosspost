@@ -29,6 +29,18 @@ export default class InstagramPoster extends Poster {
     } catch (e) { }
   };
 
+  override maybeDismissDisclaimers = async (page: Page) => {
+    try {
+      const acceptCookiesButton = await page.waitForSelector('text/Allow all cookies',
+          {timeout: 5000});
+      await acceptCookiesButton.click();
+
+    } catch(e) {
+      console.log(e);
+      // No big deal, there may be no disclaimers
+    }
+  };
+
   override loadNewPostPage = async (page) => {
     const newPostButton = await page.waitForSelector('[aria-label="New post"]');
     await newPostButton.click();

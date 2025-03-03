@@ -9,10 +9,25 @@ export default class ThreadsPoster extends Poster {
   }
 
   override login = async (page, user, password) => {
+    const continueBtn = await page.waitForSelector('text/Continue with Instagram');
+    await continueBtn.click();
+    await page.waitForNavigation();
     await page.waitForSelector('input[type="text"]');
     await page.type('input[type="text"]', user);
     await page.type('input[type="password"]', password);
     page.keyboard.press('Enter');
+  };
+
+  override maybeDismissDisclaimers = async (page: Page) => {
+    try {
+      const acceptCookiesButton = await page.waitForSelector('text/Allow all cookies',
+          {timeout: 5000});
+      await acceptCookiesButton.click();
+
+    } catch(e) {
+      // No big deal, there may be no disclaimers
+      console.log(e);
+    }
   };
 
   override loadNewPostPage = async (page) => {

@@ -23,6 +23,8 @@ export default class Poster {
     return page;
   }
 
+  maybeDismissDisclaimers = async (page: Page) => {};
+
   login = async (page: Page, user: string, password: string) => {};
   loadNewPostPage = async (page: Page) => {};
 
