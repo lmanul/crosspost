@@ -45,8 +45,9 @@ export default class BlueskyPoster extends Poster {
     // The UI has two such buttons for each image
     const buttonWeWant = altButtons[2 * (this.uploadedImageCount - 1)];
     await buttonWeWant.click();
-    await page.type('[aria-label=\'Alt text\']', description);
-    const doneButton = await page.waitForSelector('text/Save');
+    await page.waitForSelector('[aria-label="Alt text"]');
+    await page.type('[aria-label="Alt text"]', description);
+    const doneButton = await page.waitForSelector('[aria-label="Save"]');
     await doneButton.click();
     this.addedImageDescriptionCount++;
   };
