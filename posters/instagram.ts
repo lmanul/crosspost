@@ -36,8 +36,8 @@ export default class InstagramPoster extends Poster {
       await acceptCookiesButton.click();
 
     } catch(e) {
-      console.log(e);
       // No big deal, there may be no disclaimers
+      console.log('No cookies dialog, we might be outside of the EU');
     }
   };
 
@@ -86,23 +86,19 @@ export default class InstagramPoster extends Poster {
     await accessibilityHeader.click();
     // Wait for animation
     await delay(1);
+
+    const mainInput = await page.waitForSelector('[aria-label="Write a caption..."]');
+    await mainInput.focus();
+    await page.keyboard.type(text);
   };
 
   override addImageDescription = async (page: Page, description: string) => {
 
-    const nextEmpty = await page.evaluate(() => {
-      const fields = document.querySelectorAll('input[placeholder="Write alt text..."]');
-      for (let field of fields) {
-        console.log(field);
-        if ((field as HTMLInputElement).value === '') {
-          return field;
-        }
-      }
-      return null;
-    });
+    const selector = 'input[placeholder="Write alt text..."][value=""]';
+    const nextEmpty = await page.waitForSelector(selector);
 
     if (nextEmpty) {
-      await (nextEmpty as HTMLInputElement).focus();
+      await nextEmpty.focus();
       await page.keyboard.type(description);
       this.addedImageDescriptionCount++;
     } else {
