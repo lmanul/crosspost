@@ -7,6 +7,9 @@ import subprocess
 
 CONFIG_FILE = "config.txt"
 
+def prepare():
+    os.system("npm install")
+
 # This is for Manu's own usage
 def prime_config_file():
     if getpass.getuser() != "manucornet":
@@ -32,6 +35,7 @@ def do_cross_post():
     os.system("npm run start")
 
 def main():
+    prepare()
     prime_config_file()
     do_cross_post()
     cleanup()
