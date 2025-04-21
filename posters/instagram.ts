@@ -9,7 +9,13 @@ export default class InstagramPoster extends Poster {
   }
 
   override login = async (page, user, password) => {
-    const uField = await page.waitForSelector('[name="username"]');
+    let uField;
+    try {
+      uField = await page.waitForSelector('[name="username"]');
+    } catch(e) {
+      // They are testing a different page
+      uField = await page.waitForSelector('[name="email"]');
+    }
     if (uField) {
       await page.type('[name="username"]', user);
       await page.type('[name="password"]', password);
