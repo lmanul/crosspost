@@ -9,13 +9,26 @@ export default class ThreadsPoster extends Poster {
   }
 
   override login = async (page, user, password) => {
-    const continueBtn = await page.waitForSelector('text/Continue with Instagram');
-    await continueBtn.click();
-    await page.waitForNavigation();
+    // const continueBtn = await page.waitForSelector('text/Continue with Instagram');
+    // await continueBtn.click();
+    // await page.waitForNavigation();
     await page.waitForSelector('input[type="text"]');
     await page.type('input[type="text"]', user);
     await page.type('input[type="password"]', password);
     page.keyboard.press('Enter');
+    await page.waitForNavigation();
+
+    try {
+      // Might not be here, no problem.
+      let notNowButton = await page.waitForSelector('text/Not now', {
+        timeout: 10,
+      });
+      if (notNowButton) {
+        await notNowButton.click();
+        await page.waitForNavigation();
+      }
+    } catch (e) { }
+
   };
 
   override maybeDismissDisclaimers = async (page: Page) => {
@@ -26,7 +39,7 @@ export default class ThreadsPoster extends Poster {
 
     } catch(e) {
       // No big deal, there may be no disclaimers
-      console.log(e);
+      console.log('No cookies dialog, we might be outside of the EU');
     }
   };
 
