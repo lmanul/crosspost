@@ -41,23 +41,31 @@ const main = async () => {
     const tab: Page = await newTabInBrowser(browser);
 
     try {
+      console.log('Loading initial page...');
       await poster.loadInitialPage(tab);
+      console.log('Maybe dismissing disclaimers...');
       await poster.maybeDismissDisclaimers(tab);
+      console.log('Logging in...');
       await poster.login(tab, config[poster.name][0], config[poster.name][1]);
+      console.log('Loading "new post" page...');
       await poster.loadNewPostPage(tab);
 
       if (bundle.images.length > 0) {
         for (let image of bundle.images) {
+          console.log('Adding image...');
           await poster.addOneImage(tab, image.imagePath);
           if (!(poster instanceof InstagramPoster)) {
             // For Instagram, we need to add the descriptions at the end.
+            console.log('Adding image description...');
             await poster.addImageDescription(tab, image.imageDescription);
           }
         }
       }
+      console.log('Adding main text...');
       await poster.addMainText(tab, bundle.mainText);
       if (poster instanceof InstagramPoster) {
         for (let image of bundle.images) {
+          console.log('Adding image description...');
           await poster.addImageDescription(tab, image.imageDescription);
         }
       }

@@ -19,7 +19,7 @@ export default class Poster {
 
   loadInitialPage = async (page: Page) => {
     await page.goto(this.baseUrl, { timeout: this.initialPageLoadTimeOutSeconds * 1000 });
-    console.log('Posting on ' + this.name + '...');
+    console.log('\nPosting on ' + this.name + '...');
     return page;
   }
 

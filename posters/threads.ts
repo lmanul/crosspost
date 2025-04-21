@@ -44,7 +44,7 @@ export default class ThreadsPoster extends Poster {
   };
 
   override loadNewPostPage = async (page) => {
-    const field = await page.waitForSelector('text/What\'s new?');
+    const field = await page.waitForSelector('[aria-label="Empty text field. Type to compose a new post."]');
     await field.click();
     /* Fediverse consent, happened before.
     const fediOk = await page.waitForSelector('text/Continue sharing');
@@ -55,7 +55,20 @@ export default class ThreadsPoster extends Poster {
     */
   }
 
+  override addMainText = async (page: Page, text: string) => {
+    const field = await page.waitForSelector('[aria-placeholder="What\'s new?"]');
+    await field.focus();
+    await page.keyboard.type(text);
+  };
+
   override addOneImage = async (page: Page, imgPath: string) => {
+
+    // Threads only seems to support a single image per post?
+    if (this.uploadedImageCount > 0) {
+      console.log('Not adding more images, Threads only supports one.');
+      return;
+    }
+
     const addButton = await page.waitForSelector('[aria-label="Attach media"]');
 
     // Clicking on the SVG itself doesn't seem to work. Let's click on the parent.
@@ -67,10 +80,15 @@ export default class ThreadsPoster extends Poster {
     ]);
     await fileChooser.accept([imgPath]);
     this.uploadedImageCount++;
+      // Wait for animation
+      await delay(1.5);
   };
 
   override addImageDescription = async (page: Page, description: string) => {
-      const altButtons = await page.$$('text/Alt');
+      if (this.uploadedImageCount > 0) {
+        return;
+      }
+        const altButtons = await page.$$('text/Alt');
       // TODO: After 2 images, we need to scroll the carousel first.
       const buttonWeWant = altButtons[this.addedImageDescriptionCount];
       await buttonWeWant.click();
