@@ -38,7 +38,7 @@ export default class InstagramPoster extends Poster {
   override maybeDismissDisclaimers = async (page: Page) => {
     try {
       const acceptCookiesButton = await page.waitForSelector('text/Allow all cookies',
-          {timeout: 5000});
+          {timeout: 2000});
       await acceptCookiesButton.click();
 
     } catch(e) {
