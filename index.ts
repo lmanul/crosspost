@@ -16,7 +16,7 @@ const DEBUG = false;
 const main = async () => {
 
   // TODO: Only instantiate stuff we find in the config.
-  const posters = [
+  const posters: Poster[] = [
     new BlueskyPoster(),
     new InstagramPoster(),
     new MastodonPoster(),
