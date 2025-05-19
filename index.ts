@@ -1,5 +1,5 @@
 import parseConfig from './configparser';
-import { ContentBundle, ContentProvider } from './contentprovider';
+import { ContentBundle, ContentProvider } from './provider';
 import { makeBrowserWindow, newTabInBrowser} from './util';
 import { TimeoutError, type Page } from 'puppeteer';
 
