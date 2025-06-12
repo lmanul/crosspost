@@ -34,10 +34,10 @@ export default class ThreadsPoster extends Poster {
   override maybeDismissDisclaimers = async (page: Page) => {
     try {
       const acceptCookiesButton = await page.waitForSelector('text/Allow all cookies',
-          {timeout: 2000});
+        { timeout: 2000 });
       await acceptCookiesButton.click();
 
-    } catch(e) {
+    } catch (e) {
       // No big deal, there may be no disclaimers
       console.log('No cookies dialog, we might be outside of the EU');
     }
@@ -69,35 +69,64 @@ export default class ThreadsPoster extends Poster {
       return;
     }
 
-    const addButton = await page.waitForSelector('[aria-label="Attach media"]');
+    const addButtonSvg = await page.waitForSelector('[aria-label="Attach media"]');
 
-    // Clicking on the SVG itself doesn't seem to work. Let's click on the parent.
-    const parentEl = await addButton.getProperty('parentElement');
+    // Clicking on the SVG itself doesn't seem to work. Let's click on the
+    // button ancestor.
+
+    const allButtons = await page.$$('[role="button"]');
+
+    let addButton;
+    console.log('Looking for add button among ' + allButtons.length + ' buttons');
+    // Get all the buttons, and find which one is an ancestor of the SVG.
+    for (let button of allButtons) {
+      // Checks if the first element is an ancestor of the second element
+      const isAncestor = await page.evaluate(
+        (ancestor, descendant) => {
+          while (descendant) {
+            if (descendant === ancestor) {
+              return true;
+            }
+            descendant = descendant.parentElement;
+          }
+          return false;
+        },
+        button,
+        addButtonSvg
+      );
+      if (isAncestor) {
+        addButton = button;
+        break;
+      }
+    }
+    if (!addButton) {
+      throw new Error('I could not find the parent of the "attach media SVG"');
+    }
 
     const [fileChooser] = await Promise.all([
       page.waitForFileChooser(),
-      parentEl.click(),
+      addButton.click(),
     ]);
     await fileChooser.accept([imgPath]);
     this.uploadedImageCount++;
-      // Wait for animation
-      await delay(1.5);
+    // Wait for animation
+    await delay(1.5);
   };
 
   override addImageDescription = async (page: Page, description: string) => {
-      if (this.uploadedImageCount > 0) {
-        return;
-      }
-        const altButtons = await page.$$('text/Alt');
-      // TODO: After 2 images, we need to scroll the carousel first.
-      const buttonWeWant = altButtons[this.addedImageDescriptionCount];
-      await buttonWeWant.click();
-      // Wait for animation
-      await delay(1.5);
-      await page.waitForSelector('[role="textbox"]');
-      await page.type('[role="textbox"]', description);
-      const btn = await page.waitForSelector('text/Done');
-      await btn.click();
-      this.addedImageDescriptionCount++;
-    };
+    if (this.uploadedImageCount > 1) {
+      return;
+    }
+    const altButtons = await page.$$('text/Alt');
+    // TODO: After 2 images, we need to scroll the carousel first.
+    const buttonWeWant = altButtons[this.addedImageDescriptionCount];
+    await buttonWeWant.click();
+    // Wait for animation
+    await delay(1.5);
+    await page.waitForSelector('[role="textbox"]');
+    await page.type('[role="textbox"]', description);
+    const btn = await page.waitForSelector('text/Done');
+    await btn.click();
+    this.addedImageDescriptionCount++;
+  };
 }
