@@ -50,6 +50,8 @@ export default class InstagramPoster extends Poster {
   override loadNewPostPage = async (page) => {
     const newPostButton = await page.waitForSelector('[aria-label="New post"]');
     await newPostButton.click();
+    const postLink = await page.waitForSelector('text/Post');
+    await postLink.click();
   };
 
 
