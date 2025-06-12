@@ -46,6 +46,9 @@ const main = async () => {
       console.log('Maybe dismissing disclaimers...');
       await poster.maybeDismissDisclaimers(tab);
       console.log('Logging in...');
+      if (!config[poster.name]) {
+        throw new Error('Config does not have login data for ' + poster.name);
+      }
       await poster.login(tab, config[poster.name][0], config[poster.name][1]);
       console.log('Loading "new post" page...');
       await poster.loadNewPostPage(tab);
