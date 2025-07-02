@@ -29,15 +29,12 @@ export default class BlueskyPoster extends Poster {
     await composeButton.click();
   }
 
-  override addOneImage = async (page: Page, imgPath: string) => {
+  override getAddImageButton = async (page: Page) => {
     const galleryButton = await page.waitForSelector('[aria-label="Gallery"]');
-    const [fileChooser] = await Promise.all([
-        page.waitForFileChooser(),
-        galleryButton.click(),
-      ]);
-    await fileChooser.accept([imgPath]);
+    return galleryButton;
+  };
+  override waitForImageAdded = async (page: Page) => {
     await page.waitForSelector(ADD_DESCRIPTION_BUTTON_SELECTOR);
-    this.uploadedImageCount++;
   };
 
   override addImageDescription = async (page: Page, description: string) => {

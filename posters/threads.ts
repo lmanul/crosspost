@@ -5,7 +5,7 @@ import Poster from './poster';
 export default class ThreadsPoster extends Poster {
 
   constructor() {
-    super('threads', 'https://threads.net/login');
+    super('threads', 'https://www.threads.com/login');
   }
 
   override login = async (page, user, password) => {
@@ -61,12 +61,12 @@ export default class ThreadsPoster extends Poster {
     await page.keyboard.type(text);
   };
 
-  override addOneImage = async (page: Page, imgPath: string) => {
 
+  override getAddImageButton = async (page: Page) => {
     // Threads only seems to support a single image per post?
     if (this.uploadedImageCount > 0) {
       console.log('Not adding more images, Threads only supports one.');
-      return;
+      return null;
     }
 
     const addButtonSvg = await page.waitForSelector('[aria-label="Attach media"]');
@@ -99,17 +99,15 @@ export default class ThreadsPoster extends Poster {
         break;
       }
     }
-    if (!addButton) {
+    if (addButton) {
+      console.log('Found the "Attach media" button');
+      return addButton;
+    } else {
       throw new Error('I could not find the parent of the "attach media SVG"');
     }
+  };
 
-    const [fileChooser] = await Promise.all([
-      page.waitForFileChooser(),
-      addButton.click(),
-    ]);
-    await fileChooser.accept([imgPath]);
-    this.uploadedImageCount++;
-    // Wait for animation
+  override waitForImageAdded = async (page: Page) => {
     await delay(1.5);
   };
 

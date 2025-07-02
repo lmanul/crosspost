@@ -12,7 +12,7 @@ export default class InstagramPoster extends Poster {
     let uField;
     try {
       uField = await page.waitForSelector('[name="username"]');
-    } catch(e) {
+    } catch (e) {
       // They are testing a different page
       uField = await page.waitForSelector('[name="email"]');
     }
@@ -38,10 +38,10 @@ export default class InstagramPoster extends Poster {
   override maybeDismissDisclaimers = async (page: Page) => {
     try {
       const acceptCookiesButton = await page.waitForSelector('text/Allow all cookies',
-          {timeout: 2000});
+        { timeout: 2000 });
       await acceptCookiesButton.click();
 
-    } catch(e) {
+    } catch (e) {
       // No big deal, there may be no disclaimers
       console.log('No cookies dialog, we might be outside of the EU');
     }
@@ -54,8 +54,7 @@ export default class InstagramPoster extends Poster {
     await postLink.click();
   };
 
-
-  override addOneImage = async (page: Page, imgPath: string) => {
+  override getAddImageButton = async (page: Page) => {
     let fileChooserButton;
     if (this.uploadedImageCount === 0) {
       fileChooserButton = await page.waitForSelector('text/Select From Computer');
@@ -64,18 +63,14 @@ export default class InstagramPoster extends Poster {
       await openMediaGalleryButton.click();
       fileChooserButton = await page.waitForSelector('[aria-label="Plus icon"]');
     }
-    const [fileChooser] = await Promise.all([
-        page.waitForFileChooser(),
-        fileChooserButton.click(),
-      ]);
-    await fileChooser.accept([imgPath]);
+    return fileChooserButton;
+  };
 
+  override waitForImageAdded = async (page: Page) => {
     const selectCropButton = await page.waitForSelector('[aria-label="Select Crop"]');
     await selectCropButton.click();
     const originalMenuItem = await page.waitForSelector('text/Original');
     await originalMenuItem.click();
-    this.uploadedImageCount++;
-    console.log('Added ' + this.uploadedImageCount + ' images.');
   };
 
   override addMainText = async (page: Page, text: string) => {
