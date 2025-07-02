@@ -1,5 +1,7 @@
-Description of the first image.
+This is Leonardo.
 
-Description of the second image.
+This is Michelangelo.
 
-Description of the third image.
+This is Raphael.
+
+This is Donatello.
