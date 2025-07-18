@@ -31,11 +31,20 @@ export default class MastodonPoster extends Poster {
     await page.type('textarea', text);
   };
 
-  override getAddImageButton = async (page: Page) => {
-    const uploadButtonSelector = 'button[aria-label^=\'Add images\']';
-    const button = await page.waitForSelector(uploadButtonSelector);
-    return button;
+  override addOneImage = async (page: Page, imgPath: string) => {
+    // const hiddenInput = await page.waitForSelector('input[type="file"]');
+    const elementHandle = await page.$("input[type=file]");
+    await elementHandle.uploadFile(imgPath);
+    await this.waitForImageAdded(page);
+    this.uploadedImageCount++;
+    console.log('Added ' + this.uploadedImageCount + ' images.');
   };
+
+  // override getAddImageButton = async (page: Page) => {
+  //   const uploadButtonSelector = 'button[aria-label^=\'Add images\']';
+  //   const button = await page.waitForSelector(uploadButtonSelector);
+  //   return button;
+  // };
 
   override waitForImageAdded = async (page: Page) => {
     await page.waitForSelector('text/Uploading...', { hidden: true });

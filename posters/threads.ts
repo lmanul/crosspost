@@ -62,6 +62,16 @@ export default class ThreadsPoster extends Poster {
   };
 
 
+  override addOneImage = async (page: Page, imgPath: string) => {
+    // const hiddenInput = await page.waitForSelector('input[type="file"]');
+    const elementHandle = await page.$("input[type=file]");
+    await elementHandle.uploadFile(imgPath);
+    await this.waitForImageAdded(page);
+    this.uploadedImageCount++;
+    console.log('Added ' + this.uploadedImageCount + ' images.');
+  };
+
+/*
   override getAddImageButton = async (page: Page) => {
     // Threads only seems to support a single image per post?
     if (this.uploadedImageCount > 0) {
@@ -106,6 +116,7 @@ export default class ThreadsPoster extends Poster {
       throw new Error('I could not find the parent of the "attach media SVG"');
     }
   };
+*/
 
   override waitForImageAdded = async (page: Page) => {
     await delay(1.5);
