@@ -8,7 +8,7 @@ export default class MastodonPoster extends Poster {
 
   constructor() {
     // TODO: Make server configurable
-    super('mastodon', 'https://macaw.social');
+    super('mastodon', 'https://macaw.social/auth/sign_in');
   }
 
   override login = async (page, user, password) => {
