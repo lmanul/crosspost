@@ -19,6 +19,7 @@ export default class ThreadsPoster extends Poster {
     await page.waitForNavigation();
 
     try {
+      console.log('Checking for a potential "not now" dialog');
       // Might not be here, no problem.
       let notNowButton = await page.waitForSelector('text/Not now', {
         timeout: 10,
@@ -28,7 +29,6 @@ export default class ThreadsPoster extends Poster {
         await page.waitForNavigation();
       }
     } catch (e) { }
-
   };
 
   override maybeDismissDisclaimers = async (page: Page) => {
@@ -46,13 +46,19 @@ export default class ThreadsPoster extends Poster {
   override loadNewPostPage = async (page) => {
     const field = await page.waitForSelector('[aria-label="Empty text field. Type to compose a new post."]');
     await field.click();
-    /* Fediverse consent, happened before.
-    const fediOk = await page.waitForSelector('text/Continue sharing');
-    console.log('Fedi ok? ', fediOk);
-    if (fediOk) {
-      await fediOk.click();
-    }
-    */
+
+    // Fediverse consent
+    try {
+      console.log('Checking for a potential "continue sharing" dialog');
+      // Might not be here, no problem.
+      let continueSharingButton = await page.waitForSelector('text/Continue sharing', {
+        timeout: 1000,
+      });
+      if (continueSharingButton) {
+        await continueSharingButton.click();
+        await page.waitForNavigation();
+      }
+    } catch (e) { }
   }
 
   override addMainText = async (page: Page, text: string) => {
@@ -71,52 +77,52 @@ export default class ThreadsPoster extends Poster {
     console.log('Added ' + this.uploadedImageCount + ' images.');
   };
 
-/*
-  override getAddImageButton = async (page: Page) => {
-    // Threads only seems to support a single image per post?
-    if (this.uploadedImageCount > 0) {
-      console.log('Not adding more images, Threads only supports one.');
-      return null;
-    }
-
-    const addButtonSvg = await page.waitForSelector('[aria-label="Attach media"]');
-
-    // Clicking on the SVG itself doesn't seem to work. Let's click on the
-    // button ancestor.
-
-    const allButtons = await page.$$('[role="button"]');
-
-    let addButton;
-    console.log('Looking for add button among ' + allButtons.length + ' buttons');
-    // Get all the buttons, and find which one is an ancestor of the SVG.
-    for (let button of allButtons) {
-      // Checks if the first element is an ancestor of the second element
-      const isAncestor = await page.evaluate(
-        (ancestor, descendant) => {
-          while (descendant) {
-            if (descendant === ancestor) {
-              return true;
-            }
-            descendant = descendant.parentElement;
-          }
-          return false;
-        },
-        button,
-        addButtonSvg
-      );
-      if (isAncestor) {
-        addButton = button;
-        break;
+  /*
+    override getAddImageButton = async (page: Page) => {
+      // Threads only seems to support a single image per post?
+      if (this.uploadedImageCount > 0) {
+        console.log('Not adding more images, Threads only supports one.');
+        return null;
       }
-    }
-    if (addButton) {
-      console.log('Found the "Attach media" button');
-      return addButton;
-    } else {
-      throw new Error('I could not find the parent of the "attach media SVG"');
-    }
-  };
-*/
+
+      const addButtonSvg = await page.waitForSelector('[aria-label="Attach media"]');
+
+      // Clicking on the SVG itself doesn't seem to work. Let's click on the
+      // button ancestor.
+
+      const allButtons = await page.$$('[role="button"]');
+
+      let addButton;
+      console.log('Looking for add button among ' + allButtons.length + ' buttons');
+      // Get all the buttons, and find which one is an ancestor of the SVG.
+      for (let button of allButtons) {
+        // Checks if the first element is an ancestor of the second element
+        const isAncestor = await page.evaluate(
+          (ancestor, descendant) => {
+            while (descendant) {
+              if (descendant === ancestor) {
+                return true;
+              }
+              descendant = descendant.parentElement;
+            }
+            return false;
+          },
+          button,
+          addButtonSvg
+        );
+        if (isAncestor) {
+          addButton = button;
+          break;
+        }
+      }
+      if (addButton) {
+        console.log('Found the "Attach media" button');
+        return addButton;
+      } else {
+        throw new Error('I could not find the parent of the "attach media SVG"');
+      }
+    };
+  */
 
   override waitForImageAdded = async (page: Page) => {
     await delay(1.5);
