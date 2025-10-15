@@ -19,6 +19,7 @@ def prime_config_file():
     for service in [
         "bsky",
         "instagram",
+        "linkedin",
         "mastodon",
     ]:
         output = subprocess.check_output(shlex.split("p " + service + " stdout")).decode()
