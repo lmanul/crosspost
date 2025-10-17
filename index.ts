@@ -8,6 +8,7 @@ import MastodonPoster from './posters/mastodon';
 import BlueskyPoster from './posters/bluesky';
 import Poster from './posters/poster';
 import ThreadsPoster from './posters/threads';
+import LinkedInPoster from './posters/linkedin';
 
 const CONTENT_DIR = 'content';
 
@@ -21,6 +22,7 @@ const main = async () => {
     new InstagramPoster(),
     new MastodonPoster(),
     new ThreadsPoster(),
+    new LinkedInPoster(),
   ];
 
   const config = await parseConfig('config.txt');

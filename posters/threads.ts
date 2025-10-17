@@ -52,7 +52,7 @@ export default class ThreadsPoster extends Poster {
       console.log('Checking for a potential "continue sharing" dialog');
       // Might not be here, no problem.
       let continueSharingButton = await page.waitForSelector('text/Continue sharing', {
-        timeout: 1000,
+        timeout: 2000,
       });
       if (continueSharingButton) {
         await continueSharingButton.click();

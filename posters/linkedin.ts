@@ -1,6 +1,6 @@
 import Poster from "./poster";
 
-export default class LinkedIn extends Poster {
+export default class LinkedInPoster extends Poster {
     constructor() {
       super('linkedin', 'https://www.linkedin.com/login');
     }

@@ -30,7 +30,8 @@ export default class BlueskyPoster extends Poster {
   }
 
   override getAddImageButton = async (page: Page) => {
-    const galleryButton = await page.waitForSelector('[aria-label="Gallery"]');
+    const galleryButton = await page.waitForSelector(
+      '[aria-label="Add media to post"]');
     return galleryButton;
   };
   override waitForImageAdded = async (page: Page) => {
