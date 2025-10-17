@@ -1,4 +1,5 @@
 import Poster from "./poster";
+import { type Page } from 'puppeteer';
 
 export default class LinkedInPoster extends Poster {
     constructor() {
@@ -16,4 +17,9 @@ export default class LinkedInPoster extends Poster {
     await startPostButton.click();
   };
 
+  override addMainText = async (page: Page, text: string) => {
+      const field = await page.waitForSelector('[aria-label="Text editor for creating content"]');
+      await field.focus();
+      await page.keyboard.type(text);
+    };
 }
