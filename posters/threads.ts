@@ -33,8 +33,18 @@ export default class ThreadsPoster extends Poster {
 
   override maybeDismissDisclaimers = async (page: Page) => {
     try {
-      const acceptCookiesButton = await page.waitForSelector('text/Allow all cookies',
-        { timeout: 2000 });
+      const allowButtonClassList = await page.evaluate(() => {
+        const buttons = document.querySelectorAll('[role="button"]');
+        for (let button of buttons) {
+          if (button.textContent.includes('Allow all')) {
+            return button.classList.toString();
+          }
+        }
+      });
+
+      const acceptCookiesButton = await page.waitForSelector(
+        '.' + allowButtonClassList.replaceAll(' ', '.'), { timeout: 2000 });
+
       await acceptCookiesButton.click();
 
     } catch (e) {
