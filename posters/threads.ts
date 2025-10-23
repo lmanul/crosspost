@@ -9,6 +9,26 @@ export default class ThreadsPoster extends Poster {
   }
 
   override login = async (page, user, password) => {
+
+    try {
+      const loginButtonClassList = await page.evaluate(() => {
+        const buttons = document.querySelectorAll('[role="link"]');
+        for (let button of buttons) {
+          if (button.textContent.includes('Log in')) {
+            return button.classList.toString();
+          }
+        }
+      });
+
+      const loginButton = await page.waitForSelector(
+        '.' + loginButtonClassList.replaceAll(' ', '.'), { timeout: 2000 });
+
+      await loginButton.click();
+      await page.waitForNavigation();
+    } catch (err) {
+      console.log('No login link?');
+    }
+
     // const continueBtn = await page.waitForSelector('text/Continue with Instagram');
     // await continueBtn.click();
     // await page.waitForNavigation();
@@ -32,6 +52,7 @@ export default class ThreadsPoster extends Poster {
   };
 
   override maybeDismissDisclaimers = async (page: Page) => {
+    await delay(1.5);
     try {
       const allowButtonClassList = await page.evaluate(() => {
         const buttons = document.querySelectorAll('[role="button"]');
@@ -41,11 +62,14 @@ export default class ThreadsPoster extends Poster {
           }
         }
       });
-
       const acceptCookiesButton = await page.waitForSelector(
         '.' + allowButtonClassList.replaceAll(' ', '.'), { timeout: 2000 });
 
-      await acceptCookiesButton.click();
+      if (acceptCookiesButton) {
+        await delay(1.5);
+        await acceptCookiesButton.click();
+        await delay(1.5);
+      }
 
     } catch (e) {
       // No big deal, there may be no disclaimers
