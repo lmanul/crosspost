@@ -1,5 +1,6 @@
 import Poster from './poster';
 import { type Page } from 'puppeteer';
+import { delay } from '../util';
 
 const ADD_DESCRIPTION_BUTTON_SELECTOR = '[aria-label=\'Add alt text\']';
 
@@ -10,6 +11,18 @@ export default class BlueskyPoster extends Poster {
     this.initialPageLoadTimeOutSeconds = 60;
   }
 
+  override maybeDismissDisclaimers = async (page: Page): Promise<void> => {
+    try {
+      const modalCloseButton = await page.waitForSelector('[aria-label="Close welcome modal"]', { timeout: 3000 });
+      if (modalCloseButton) {
+        await modalCloseButton.click();
+        await delay(2);
+      }
+    } catch (error) {
+
+    }
+  };
+
   override login = async (page, user, password) => {
     const signInButton = await page.waitForSelector('text/Sign in');
     if (signInButton) {
@@ -19,7 +32,7 @@ export default class BlueskyPoster extends Poster {
     }
     const uField = await page.waitForSelector('[autocomplete="username"]');
     await uField.type(user);
-    const pField = await page.waitForSelector('[autocomplete="password"]');
+    const pField = await page.waitForSelector('[autocomplete="current-password"]');
     await pField.type(password);
     page.keyboard.press('Enter');
   };
