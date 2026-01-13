@@ -22,4 +22,14 @@ export default class LinkedInPoster extends Poster {
       await field.focus();
       await page.keyboard.type(text);
     };
+
+  override getAddImageButton = async (page: Page) => {
+    const galleryButton = await page.waitForSelector('[aria-label="Add media"]');
+    return galleryButton;
+  };
+
+  override waitForImageAdded = async (page: Page) => {
+    await page.waitForSelector('[aria-label="Next"]');
+  };
+
 }
