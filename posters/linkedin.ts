@@ -2,9 +2,9 @@ import Poster from "./poster";
 import { type Page } from 'puppeteer';
 
 export default class LinkedInPoster extends Poster {
-    constructor() {
-      super('linkedin', 'https://www.linkedin.com/login');
-    }
+  constructor() {
+    super('linkedin', 'https://www.linkedin.com/login');
+  }
 
   override login = async (page: Page, user: string, password: string) => {
     await page.type('#username', user);
@@ -12,16 +12,20 @@ export default class LinkedInPoster extends Poster {
     page.keyboard.press('Enter');
   };
 
-    override loadNewPostPage = async (page) => {
+  override loadNewPostPage = async (page: Page) => {
     const startPostButton = await page.waitForSelector('[aria-label="Start a post"]');
-    await startPostButton.click();
+    if (startPostButton) {
+      await startPostButton.click();
+    }
   };
 
   override addMainText = async (page: Page, text: string) => {
-      const field = await page.waitForSelector('[aria-label="Text editor for creating content"]');
+    const field = await page.waitForSelector('[aria-label="Text editor for creating content"]');
+    if (field) {
       await field.focus();
-      await page.keyboard.type(text);
-    };
+    }
+    await page.keyboard.type(text);
+  };
 
   override getAddImageButton = async (page: Page) => {
     const galleryButton = await page.waitForSelector('[aria-label="Add media"]');

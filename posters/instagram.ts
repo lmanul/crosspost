@@ -40,7 +40,9 @@ export default class InstagramPoster extends Poster {
     try {
       const acceptCookiesButton = await page.waitForSelector('text/Allow all cookies',
         { timeout: 2000 });
-      await acceptCookiesButton.click();
+      if (acceptCookiesButton) {
+        await acceptCookiesButton.click();
+      }
 
     } catch (e) {
       // No big deal, there may be no disclaimers
@@ -48,9 +50,11 @@ export default class InstagramPoster extends Poster {
     }
   };
 
-  override loadNewPostPage = async (page) => {
+  override loadNewPostPage = async (page: Page) => {
     const newPostButton = await page.waitForSelector('[aria-label="New post"]');
-    await newPostButton.click();
+    if (newPostButton) {
+      await newPostButton.click();
+    }
     // const postLink = await page.waitForSelector('text/Post');
     // await postLink.click();
   };
@@ -61,7 +65,9 @@ export default class InstagramPoster extends Poster {
       fileChooserButton = await page.waitForSelector('text/Select From Computer');
     } else {
       const openMediaGalleryButton = await page.waitForSelector('[aria-label="Open Media Gallery"]');
-      await openMediaGalleryButton.click();
+      if (openMediaGalleryButton) {
+        await openMediaGalleryButton.click();
+      }
       fileChooserButton = await page.waitForSelector('[aria-label="Plus icon"]');
     }
     return fileChooserButton;
@@ -69,30 +75,42 @@ export default class InstagramPoster extends Poster {
 
   override waitForImageAdded = async (page: Page) => {
     const selectCropButton = await page.waitForSelector('[aria-label="Select Crop"]');
-    await selectCropButton.click();
+    if (selectCropButton) {
+      await selectCropButton.click();
+    }
     const originalMenuItem = await page.waitForSelector('text/Original');
-    await originalMenuItem.click();
+    if (originalMenuItem) {
+      await originalMenuItem.click();
+    }
   };
 
   override addMainText = async (page: Page, text: string) => {
     let nextButton = await page.waitForSelector('text/Next');
-    await nextButton.click();
+    if (nextButton) {
+      await nextButton.click();
+    }
     // Wait for animation
     await delay(2);
     // Once more (ignore filters)
     nextButton = await page.waitForSelector('text/Next');
-    await nextButton.click();
+    if (nextButton) {
+      await nextButton.click();
+    }
     // Wait for animation
     await delay(2);
 
     // Also expand the accessibility container for adding descriptions.
     const accessibilityHeader = await page.waitForSelector('text/Accessibility');
-    await accessibilityHeader.click();
+    if (accessibilityHeader) {
+      await accessibilityHeader.click();
+    }
     // Wait for animation
     await delay(1);
 
     const mainInput = await page.waitForSelector('[aria-label="Write a caption..."]');
-    await mainInput.focus();
+    if (mainInput) {
+      await mainInput.focus();
+    }
     await page.keyboard.type(text);
   };
 

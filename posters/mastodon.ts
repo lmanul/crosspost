@@ -17,9 +17,11 @@ export default class MastodonPoster extends Poster {
     page.keyboard.press('Enter');
   };
 
-  override loadNewPostPage = async (page) => {
+  override loadNewPostPage = async (page: Page) => {
     const newPostButton = await page.waitForSelector('text/New Post');
-    await newPostButton.click();
+    if (newPostButton) {
+      await newPostButton.click();
+    }
   };
 
   override addMainText = async(page: Page, text: string) => {
@@ -46,11 +48,15 @@ export default class MastodonPoster extends Poster {
 
   override addImageDescription = async (page: Page, description: string) => {
     const iconWarning = await page.waitForSelector(WARNING_ICON_SELECTOR);
-    await iconWarning.click();
+    if (iconWarning) {
+      await iconWarning.click();
+    }
     await page.waitForSelector(UPLOAD_MODAL_DESCRIPTION_SELECTOR);
     await page.type(UPLOAD_MODAL_DESCRIPTION_SELECTOR, description);
     const btn = await page.waitForSelector('text/Done');
-    await btn.click();
+    if (btn) {
+      await btn.click();
+    }
 
     // Wait until we're back at the thumbnails view
     await page.waitForSelector(UPLOAD_MODAL_DESCRIPTION_SELECTOR, { hidden: true });

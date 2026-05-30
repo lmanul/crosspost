@@ -23,7 +23,9 @@ export default class ThreadsPoster extends Poster {
       const loginButton = await page.waitForSelector(
         '.' + loginButtonClassList.replaceAll(' ', '.'), { timeout: 2000 });
 
-      await loginButton.click();
+      if (loginButton) {
+        await loginButton.click();
+      }
       await page.waitForNavigation();
     } catch (err) {
       console.log('No login link?');
@@ -77,9 +79,11 @@ export default class ThreadsPoster extends Poster {
     }
   };
 
-  override loadNewPostPage = async (page) => {
+  override loadNewPostPage = async (page: Page) => {
     const field = await page.waitForSelector('[aria-label="Empty text field. Type to compose a new post."]');
-    await field.click();
+    if (field) {
+      await field.click();
+    }
 
     // Fediverse consent
     try {
@@ -97,7 +101,9 @@ export default class ThreadsPoster extends Poster {
 
   override addMainText = async (page: Page, text: string) => {
     const field = await page.waitForSelector('[aria-placeholder="What\'s new?"]');
-    await field.focus();
+    if (field) {
+      await field.focus();
+    }
     await page.keyboard.type(text);
   };
 
@@ -105,7 +111,9 @@ export default class ThreadsPoster extends Poster {
   override addOneImage = async (page: Page, imgPath: string) => {
     // const hiddenInput = await page.waitForSelector('input[type="file"]');
     const elementHandle = await page.$("input[type=file]");
-    await elementHandle.uploadFile(imgPath);
+    if (elementHandle) {
+      await elementHandle.uploadFile(imgPath);
+    }
     await this.waitForImageAdded(page);
     this.uploadedImageCount++;
     console.log('Added ' + this.uploadedImageCount + ' images.');
