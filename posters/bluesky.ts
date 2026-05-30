@@ -42,7 +42,7 @@ export default class BlueskyPoster extends Poster {
   };
 
   override loadNewPostPage = async (page: Page) => {
-    const composeButton = await page.waitForSelector('[aria-label="New post"]');
+    const composeButton = await page.waitForSelector('[aria-label="Compose new post"]');
     if (composeButton) {
       await composeButton.click();
     }
