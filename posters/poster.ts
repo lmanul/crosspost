@@ -1,4 +1,4 @@
-import { type Page } from 'puppeteer';
+import { ElementHandle, type Page } from 'puppeteer';
 
 const INPUT_FIELD_SELECTOR = '[contenteditable=true][role=textbox]';
 
@@ -48,7 +48,7 @@ export default class Poster {
     console.log('Added ' + this.uploadedImageCount + ' images.');
   };
 
-  getAddImageButton = async (page: Page): Promise<HTMLButtonElement | null> => { return Promise.resolve(null); };
+  getAddImageButton = async (page: Page): Promise<ElementHandle<Element> | null> => { return Promise.resolve(null); };
   waitForImageAdded = async (page: Page) => { };
 
   addImageDescription = async (page: Page, description: string) => { };

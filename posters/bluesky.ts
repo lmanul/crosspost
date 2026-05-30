@@ -1,5 +1,5 @@
 import Poster from './poster';
-import { type Page } from 'puppeteer';
+import { ElementHandle, type Page } from 'puppeteer';
 import { delay } from '../util';
 
 const ADD_DESCRIPTION_BUTTON_SELECTOR = '[aria-label=\'Add alt text\']';
@@ -23,7 +23,7 @@ export default class BlueskyPoster extends Poster {
     }
   };
 
-  override login = async (page, user, password) => {
+  override login = async (page: Page, user: string, password: string) => {
     const signInButton = await page.waitForSelector('text/Sign in');
     if (signInButton) {
       await signInButton.click();
@@ -31,9 +31,13 @@ export default class BlueskyPoster extends Poster {
       console.log('No sign in button!');
     }
     const uField = await page.waitForSelector('[autocomplete="username"]');
-    await uField.type(user);
+    if (uField) {
+      await uField.type(user);
+    }
     const pField = await page.waitForSelector('[autocomplete="current-password"]');
-    await pField.type(password);
+    if (pField) {
+      await pField.type(password);
+    }
     page.keyboard.press('Enter');
   };
 
@@ -42,8 +46,8 @@ export default class BlueskyPoster extends Poster {
     await composeButton.click();
   }
 
-  override getAddImageButton = async (page: Page) => {
-    const galleryButton = await page.waitForSelector(
+  override getAddImageButton = async (page: Page): Promise<ElementHandle<Element> | null> => {
+    const galleryButton: ElementHandle<Element> | null = await page.waitForSelector(
       '[aria-label="Add media to post"]');
     return galleryButton;
   };
@@ -59,7 +63,9 @@ export default class BlueskyPoster extends Poster {
     await page.waitForSelector('[aria-label="Alt text"]');
     await page.type('[aria-label="Alt text"]', description);
     const doneButton = await page.waitForSelector('[aria-label="Save"]');
-    await doneButton.click();
+    if (doneButton) {
+      await doneButton.click();
+    }
     this.addedImageDescriptionCount++;
   };
 }
