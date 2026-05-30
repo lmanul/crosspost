@@ -9,7 +9,7 @@ export default class Poster {
   uploadedImageCount: number;
   addedImageDescriptionCount: number;
 
-  constructor(name, baseUrl) {
+  constructor(name: string, baseUrl: string) {
     this.name = name;
     this.baseUrl = baseUrl;
     this.initialPageLoadTimeOutSeconds = 30;
@@ -48,7 +48,7 @@ export default class Poster {
     console.log('Added ' + this.uploadedImageCount + ' images.');
   };
 
-  getAddImageButton = async (page: Page) => { return null; };
+  getAddImageButton = async (page: Page): Promise<HTMLButtonElement | null> => { return Promise.resolve(null); };
   waitForImageAdded = async (page: Page) => { };
 
   addImageDescription = async (page: Page, description: string) => { };
