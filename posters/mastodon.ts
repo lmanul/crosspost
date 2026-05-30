@@ -11,7 +11,7 @@ export default class MastodonPoster extends Poster {
     super('mastodon', 'https://macaw.social/auth/sign_in');
   }
 
-  override login = async (page, user, password) => {
+  override login = async (page: Page, user: string, password: string) => {
     await page.type('#user_email', user);
     await page.type('#user_password', password);
     page.keyboard.press('Enter');

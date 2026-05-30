@@ -6,7 +6,7 @@ export default class LinkedInPoster extends Poster {
       super('linkedin', 'https://www.linkedin.com/login');
     }
 
-    override login = async (page, user, password) => {
+  override login = async (page: Page, user: string, password: string) => {
     await page.type('#username', user);
     await page.type('#password', password);
     page.keyboard.press('Enter');

@@ -8,7 +8,7 @@ export default class ThreadsPoster extends Poster {
     super('threads', 'https://www.threads.com/login');
   }
 
-  override login = async (page, user, password) => {
+  override login = async (page: Page, user: string, password: string) => {
 
     try {
       const loginButtonClassList = await page.evaluate(() => {

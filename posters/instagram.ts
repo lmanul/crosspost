@@ -8,7 +8,7 @@ export default class InstagramPoster extends Poster {
     super('instagram', 'https://www.instagram.com');
   }
 
-  override login = async (page, user, password) => {
+  override login = async (page: Page, user: string, password: string) => {
     let uField;
     try {
       const selector = '[name="username"]';
