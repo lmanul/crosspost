@@ -48,6 +48,16 @@ export default class BlueskyPoster extends Poster {
     }
   }
 
+  override addMainText = async (page: Page, text: string) => {
+    let area = await page.waitForSelector('[contenteditable="true"]');
+    if (area) {
+      area.click();
+      await delay(2);
+      await page.keyboard.type(text);
+    }
+  };
+
+
   override getAddImageButton = async (page: Page): Promise<ElementHandle<Element> | null> => {
     const galleryButton: ElementHandle<Element> | null = await page.waitForSelector(
       '[aria-label="Add media to post"]');
