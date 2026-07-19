@@ -1,6 +1,6 @@
 import parseConfig from './configparser';
 import { ContentBundle, ContentProvider } from './provider';
-import { makeBrowserWindow, newTabInBrowser} from './util';
+import { makeBrowserWindow, newTabInBrowser } from './util';
 import { TimeoutError, type Page } from 'puppeteer';
 
 import InstagramPoster from './posters/instagram';
@@ -47,11 +47,13 @@ const main = async () => {
       await poster.loadInitialPage(tab);
       console.log('Maybe dismissing disclaimers...');
       await poster.maybeDismissDisclaimers(tab);
-      console.log('Logging in...');
-      if (!config[poster.name]) {
-        throw new Error('Config does not have login data for ' + poster.name);
+      if (!poster.isLoggedIn(tab)) {
+        console.log('Logging in...');
+        if (!config[poster.name]) {
+          throw new Error('Config does not have login data for ' + poster.name);
+        }
+        await poster.login(tab, config[poster.name][0], config[poster.name][1]);
       }
-      await poster.login(tab, config[poster.name][0], config[poster.name][1]);
       console.log('Loading "new post" page...');
       await poster.loadNewPostPage(tab);
 

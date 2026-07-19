@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises';
 
-const parseConfig = async (fileName) => {
+const parseConfig = async (fileName: string) => {
   const parsed = {};
 
   const content = await readFile(fileName, 'utf-8');

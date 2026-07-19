@@ -25,6 +25,7 @@ export default class Poster {
 
   maybeDismissDisclaimers = async (page: Page) => { };
 
+  isLoggedIn = async (page: Page): Promise<boolean> => { return true; };
   login = async (page: Page, user: string, password: string) => { };
   loadNewPostPage = async (page: Page) => { };
 

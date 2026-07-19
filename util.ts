@@ -1,13 +1,14 @@
 import puppeteer from 'puppeteer';
 import { type Browser, type Page } from 'puppeteer';
 
-const delay = (seconds) => {
+const delay = (seconds: number) => {
   return new Promise(resolve => setTimeout(resolve, seconds * 1000));
 }
 
 const makeBrowserWindow = async () => {
   const browser = await puppeteer.launch({
     args: ['--no-sandbox'],
+    userDataDir: '/home/manucornet/throwaway/chrome_puppeteer',
     headless: false,
     slowMo: 10,
   });
@@ -27,13 +28,14 @@ const findElementWithRoleContainingText = async (page: Page, role: string, text:
     const els = document.querySelectorAll('[role="' + role + '"]');
     console.log(els);
     for (let el of els) {
-//      if (el.textContent.toLowerCase().includes(text.toLowerCase())) {
       if (el.textContent.includes(text)) {
         return el.classList.toString();
       }
     }
   });
-  console.log('Foudn class ' + classList);
+  if (!classList) {
+    return null;
+  }
 
   const el = await page.waitForSelector(
     '.' + classList.replaceAll(' ', '.'), { timeout });
