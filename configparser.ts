@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
 
 const parseConfig = async (fileName: string) => {
-  const parsed = {};
+  const parsed: Record<string, [string, string]> = {};
 
   const content = await readFile(fileName, 'utf-8');
   const lines = content.split('\n');
