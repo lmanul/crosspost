@@ -20,6 +20,10 @@ export default class ThreadsPoster extends Poster {
         }
       });
 
+      if (!loginButtonClassList) {
+        throw new Error('Could not find the "Log in" button');
+      }
+
       const loginButton = await page.waitForSelector(
         '.' + loginButtonClassList.replaceAll(' ', '.'), { timeout: 2000 });
 
@@ -64,6 +68,9 @@ export default class ThreadsPoster extends Poster {
           }
         }
       });
+      if (!allowButtonClassList) {
+        throw new Error('Could not find the "Allow all" cookies button');
+      }
       const acceptCookiesButton = await page.waitForSelector(
         '.' + allowButtonClassList.replaceAll(' ', '.'), { timeout: 2000 });
 
@@ -183,7 +190,9 @@ export default class ThreadsPoster extends Poster {
     await page.waitForSelector('[role="textbox"]');
     await page.type('[role="textbox"]', description);
     const btn = await page.waitForSelector('text/Done');
-    await btn.click();
+    if (btn) {
+      await btn.click();
+    }
     this.addedImageDescriptionCount++;
   };
 }

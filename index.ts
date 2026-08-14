@@ -78,7 +78,7 @@ const main = async () => {
         }
       }
     } catch (e) {
-      console.log('Caught ' + e.message);
+      console.log('Caught ' + (e instanceof Error ? e.message : String(e)));
       if (e instanceof TimeoutError) {
         if (!DEBUG) {
           console.log(e.message);
