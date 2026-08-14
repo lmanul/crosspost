@@ -47,7 +47,8 @@ const main = async () => {
       await poster.loadInitialPage(tab);
       console.log('Maybe dismissing disclaimers...');
       await poster.maybeDismissDisclaimers(tab);
-      if (!poster.isLoggedIn(tab)) {
+      const loggedIn = await poster.isLoggedIn(tab);
+      if (!loggedIn) {
         console.log('Logging in...');
         if (!config[poster.name]) {
           throw new Error('Config does not have login data for ' + poster.name);
