@@ -18,6 +18,25 @@ It fills in every composer and leaves the tabs open so the user can review and
 click "Post" manually. Do not add an automatic submit step unless explicitly
 asked.
 
+**Go easy on real accounts.** Every `./run`, `./test`, or ad-hoc Puppeteer
+script logs into the user's real accounts and behaves like a bot (uploads, fast
+typing, repeated composer sessions). Too much of that on one service in a short
+time risks getting the account flagged, challenged, or locked. So:
+
+- Don't loop retries against the same service. Each run should answer a
+  specific question; if a service fails a couple of times, stop and report
+  rather than keep trying variations.
+- Get the most out of each session: one instrumented run (screenshots, DOM
+  dumps, network and console logs) beats several blind reruns. Start from the
+  screenshots in `tests/screenshots/` before launching anything new.
+- Test selector and logic changes offline first where possible (e.g.
+  `page.setContent()` in a throwaway headless browser, not the real profile).
+- Only run the service you're working on (`./test mastodon`), not the whole
+  suite.
+- When it's unclear whether a failure is the site or the automation, ask the
+  user to try the same thing by hand in the Puppeteer profile before
+  automating further.
+
 ## Running it
 
 ```
