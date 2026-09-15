@@ -1,10 +1,10 @@
-import { mkdir, rm, writeFile } from 'fs/promises';
+import { rm } from 'fs/promises';
 import path from 'path';
 import { type Page } from 'puppeteer';
 import parseConfig from '../configparser';
 import composePost from '../compose';
 import { ContentProvider } from '../provider';
-import { makeBrowserWindow, newTabInBrowser } from '../util';
+import { makeBrowserWindow, newTabInBrowser, saveDomDump, saveScreenshot } from '../util';
 import SERVICES from '../posters/registry';
 import Verifier, { type CheckResult } from './verifiers/verifier';
 import BlueskyVerifier from './verifiers/bluesky';
@@ -78,66 +78,6 @@ const main = async () => {
       }
     });
 
-    const saveScreenshot = async (fileName: string) => {
-      const screenshotPath = path.join(SCREENSHOTS_DIR, fileName);
-      try {
-        await mkdir(SCREENSHOTS_DIR, { recursive: true });
-        await tab.screenshot({ path: screenshotPath });
-        console.log(`Screenshot saved to ${path.relative(process.cwd(), screenshotPath)}`);
-      } catch (e) {
-        console.log(`Could not save screenshot: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    };
-
-    // Enough of the page to fix a stale selector without another session on
-    // the site (see "Go easy on real accounts" in CLAUDE.md).
-    const saveDomDump = async (fileName: string) => {
-      const dumpPath = path.join(SCREENSHOTS_DIR, fileName);
-      try {
-        const dump = await tab.evaluate(() => {
-          const describe = (el: Element) => ({
-            tag: el.tagName.toLowerCase(),
-            role: el.getAttribute('role'),
-            ariaLabel: el.getAttribute('aria-label'),
-            testId: el.getAttribute('data-testid'),
-            ariaDisabled: el.getAttribute('aria-disabled'),
-            text: (el.textContent ?? '').trim().slice(0, 80),
-          });
-          return {
-            url: location.href,
-            title: document.title,
-            dialogs: document.querySelectorAll('[role="dialog"]').length,
-            // Scoped to dialogs when there are any, to leave out the feed.
-            images: Array.from(document.querySelectorAll(
-              document.querySelector('[role="dialog"]') ? '[role="dialog"] img' : 'img'))
-              .map(img => ({
-                alt: img.getAttribute('alt'),
-                src: (img.getAttribute('src') ?? '').slice(0, 60),
-                width: (img as HTMLImageElement).width,
-                height: (img as HTMLImageElement).height,
-              }))
-              .slice(0, 200),
-            fields: Array.from(document.querySelectorAll('input, textarea, [contenteditable="true"]'))
-              .map(el => ({
-                ...describe(el),
-                placeholder: el.getAttribute('placeholder'),
-                ariaPlaceholder: el.getAttribute('aria-placeholder'),
-                value: (el as HTMLInputElement).value ?? (el as HTMLElement).innerText,
-              })),
-            interactive: Array.from(document.querySelectorAll(
-              'button, [role="button"], [aria-label], [data-testid]'))
-              .map(describe)
-              .slice(0, 1000),
-          };
-        });
-        await mkdir(SCREENSHOTS_DIR, { recursive: true });
-        await writeFile(dumpPath, JSON.stringify(dump, null, 2));
-        console.log(`DOM dump saved to ${path.relative(process.cwd(), dumpPath)}`);
-      } catch (e) {
-        console.log(`Could not save DOM dump: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    };
-
     // Don't let failure artifacts from an earlier run pass for this one's.
     for (const extension of ['png', 'json']) {
       await rm(path.join(SCREENSHOTS_DIR, `${name}-failure.${extension}`), { force: true });
@@ -148,8 +88,8 @@ const main = async () => {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.log(`  ✗ compose: ${message}`);
-      await saveScreenshot(`${name}-failure.png`);
-      await saveDomDump(`${name}-failure.json`);
+      await saveScreenshot(tab, path.join(SCREENSHOTS_DIR, `${name}-failure.png`));
+      await saveDomDump(tab, path.join(SCREENSHOTS_DIR, `${name}-failure.json`));
       outcomes.push([name, 'FAIL', 'compose step threw']);
       continue;
     }
@@ -158,7 +98,7 @@ const main = async () => {
     const results = await verifier.verify(tab, bundle);
 
     // Taken after verifying, so any dialogs the checks opened are closed again.
-    await saveScreenshot(`${name}.png`);
+    await saveScreenshot(tab, path.join(SCREENSHOTS_DIR, `${name}.png`));
     results.push({
       name: 'nothing published',
       passed: !publishAttempted,
@@ -168,7 +108,7 @@ const main = async () => {
 
     const failed = results.filter(r => !r.passed).length;
     if (failed > 0) {
-      await saveDomDump(`${name}-failure.json`);
+      await saveDomDump(tab, path.join(SCREENSHOTS_DIR, `${name}-failure.json`));
     }
     outcomes.push(failed === 0
       ? [name, 'PASS', `${results.length} checks`]
