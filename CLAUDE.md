@@ -162,7 +162,8 @@ a `./run` browser window is still open (Chrome's profile lock).
 - After verifying, the harness saves a screenshot of the composed post to
   `tests/screenshots/<service>.png` (git-ignored, overwritten each run). It is
   taken whenever composing succeeded, even if checks failed, and a failed
-  screenshot is logged but doesn't fail the test.
+  screenshot is logged but doesn't fail the test. If composing itself throws,
+  the page is saved as `<service>-failure.png` instead: look at it first.
 - [tests/verifiers/verifier.ts](tests/verifiers/verifier.ts) — abstract
   `Verifier`. Subclasses implement `checkMainText`, `checkImagesAttached`,
   `checkReadyToPost`, `checkImageDescriptions`; each resolves with a short
@@ -173,8 +174,12 @@ a `./run` browser window is still open (Chrome's profile lock).
   and adds a "nothing published" check. It detects, it does not block —
   verifiers themselves must only *read* the submit button, never click it.
 
-Status: only [tests/verifiers/mastodon.ts](tests/verifiers/mastodon.ts) exists
-so far. To add a service, write a `Verifier` subclass and register it in
+Status: [tests/verifiers/mastodon.ts](tests/verifiers/mastodon.ts) passes.
+[tests/verifiers/instagram.ts](tests/verifiers/instagram.ts) is written but has
+never gotten as far as verifying: as of 2026-09-15, Instagram's dialog shows
+"Something went wrong" as soon as "Next" is clicked on the crop step (no
+network request fails; it is client-side), so `InstagramPoster.addMainText`
+times out. To add a service, write a `Verifier` subclass and register it in
 `VERIFIERS` in [tests/e2e.ts](tests/e2e.ts).
 
 Verifier selectors rot exactly like poster selectors. The Mastodon verifier

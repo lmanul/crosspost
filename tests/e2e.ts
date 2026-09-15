@@ -7,6 +7,7 @@ import { ContentProvider } from '../provider';
 import { makeBrowserWindow, newTabInBrowser } from '../util';
 import SERVICES from '../posters/registry';
 import Verifier, { type CheckResult } from './verifiers/verifier';
+import InstagramVerifier from './verifiers/instagram';
 import MastodonVerifier from './verifiers/mastodon';
 
 // Relative to the repo root, like CONTENT_DIR in index.ts.
@@ -16,6 +17,7 @@ const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots');
 
 // Services without an entry here are reported as skipped.
 const VERIFIERS: Record<string, () => Verifier> = {
+  instagram: () => new InstagramVerifier(),
   mastodon: () => new MastodonVerifier(),
 };
 
@@ -72,11 +74,23 @@ const main = async () => {
       }
     });
 
+    const saveScreenshot = async (fileName: string) => {
+      const screenshotPath = path.join(SCREENSHOTS_DIR, fileName);
+      try {
+        await mkdir(SCREENSHOTS_DIR, { recursive: true });
+        await tab.screenshot({ path: screenshotPath });
+        console.log(`Screenshot saved to ${path.relative(process.cwd(), screenshotPath)}`);
+      } catch (e) {
+        console.log(`Could not save screenshot: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    };
+
     try {
       await composePost(poster, tab, bundle, config[name]);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.log(`  ✗ compose: ${message}`);
+      await saveScreenshot(`${name}-failure.png`);
       outcomes.push([name, 'FAIL', 'compose step threw']);
       continue;
     }
@@ -85,14 +99,7 @@ const main = async () => {
     const results = await verifier.verify(tab, bundle);
 
     // Taken after verifying, so any dialogs the checks opened are closed again.
-    const screenshotPath = path.join(SCREENSHOTS_DIR, `${name}.png`);
-    try {
-      await mkdir(SCREENSHOTS_DIR, { recursive: true });
-      await tab.screenshot({ path: screenshotPath });
-      console.log(`Screenshot saved to ${path.relative(process.cwd(), screenshotPath)}`);
-    } catch (e) {
-      console.log(`Could not save screenshot: ${e instanceof Error ? e.message : String(e)}`);
-    }
+    await saveScreenshot(`${name}.png`);
     results.push({
       name: 'nothing published',
       passed: !publishAttempted,
