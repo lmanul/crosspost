@@ -1,4 +1,4 @@
-import { type Page } from 'puppeteer';
+import { type HTTPRequest, type Page } from 'puppeteer';
 import Verifier from './verifier';
 
 // Bluesky's web app exposes React Native testIDs as data-testid, which are
@@ -16,10 +16,9 @@ export default class BlueskyVerifier extends Verifier {
 
   // Posts are written to the user's repo, either one record at a time or in a
   // batch (threads, threadgates).
-  publishRequest = {
-    method: 'POST',
-    urlPattern: /\/xrpc\/com\.atproto\.repo\.(createRecord|applyWrites)(\?|$)/,
-  };
+  isPublishRequest = (request: HTTPRequest) =>
+    request.method() === 'POST'
+    && /\/xrpc\/com\.atproto\.repo\.(createRecord|applyWrites)(\?|$)/.test(request.url());
 
   override checkMainText = async (page: Page, expected: string) => {
     const field = await page.$(TEXT_FIELD_SELECTOR);

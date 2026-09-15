@@ -1,4 +1,4 @@
-import { type Page } from 'puppeteer';
+import { type HTTPRequest, type Page } from 'puppeteer';
 import Verifier from './verifier';
 
 const TEXTAREA_SELECTOR = 'textarea';
@@ -10,7 +10,8 @@ const SUBMIT_BUTTON_SELECTORS = ['.compose-form button[type="submit"]', 'button[
 
 export default class MastodonVerifier extends Verifier {
 
-  publishRequest = { method: 'POST', urlPattern: /\/api\/v1\/statuses(\?|$)/ };
+  isPublishRequest = (request: HTTPRequest) =>
+    request.method() === 'POST' && /\/api\/v1\/statuses(\?|$)/.test(request.url());
 
   override checkMainText = async (page: Page, expected: string) => {
     const actual = await page.$eval(TEXTAREA_SELECTOR, el => (el as HTMLTextAreaElement).value);

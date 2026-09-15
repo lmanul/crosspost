@@ -1,8 +1,72 @@
 import { delay } from '../util';
-import { type Page } from 'puppeteer';
+import { type ElementHandle, type Page } from 'puppeteer';
 import Poster from './poster';
 
 const COMPOSE_FIELD_SELECTOR = '[aria-label="Empty text field. Type to compose a new post."]';
+const DIALOG_BUTTON_SELECTOR = '[role="dialog"] [role="button"]';
+
+// Threads' markup has few stable labels, so controls are matched on their text.
+export const findByText = async (
+  page: Page,
+  selector: string,
+  text: string | RegExp,
+): Promise<ElementHandle<Element>[]> => {
+  const matches: ElementHandle<Element>[] = [];
+  for (const handle of await page.$$(selector)) {
+    const content = await handle.evaluate(el => (el.textContent ?? '').trim());
+    if (typeof text === 'string' ? content === text : text.test(content)) {
+      matches.push(handle);
+    }
+  }
+  return matches;
+};
+
+// Opens the alt text editor for the index-th attached image ("•••" menu, then
+// "Add alt text") and returns its text field. The editor replaces the composer
+// view inside the same dialog.
+export const openAltTextEditor = async (page: Page, index: number): Promise<ElementHandle<Element>> => {
+  const actionButtons = await findByText(page, DIALOG_BUTTON_SELECTOR, 'Attachment actions');
+  const actionButton = actionButtons[index];
+  if (!actionButton) {
+    throw new Error(`No "Attachment actions" button for image #${index + 1} (found ${actionButtons.length})`);
+  }
+  await actionButton.click();
+  await page.waitForSelector('[role="menuitem"]', { timeout: 5000 });
+  const [altTextItem] = await findByText(page, '[role="menuitem"]', /alt text/i);
+  if (!altTextItem) {
+    throw new Error('No alt text item in the attachment menu');
+  }
+  await altTextItem.click();
+  // Wait for animation
+  await delay(1.5);
+
+  // The composer's own textbox is still in the DOM; the editor's comes after it.
+  const field = (await page.evaluateHandle(() => {
+    const visible = Array.from(document.querySelectorAll('[role="dialog"] [role="textbox"]'))
+      .filter(el => {
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+    return visible[visible.length - 1] ?? null;
+  })).asElement();
+  if (!field) {
+    throw new Error('No text field in the alt text editor');
+  }
+  return field as ElementHandle<Element>;
+};
+
+// Leaves the alt text editor: "Done" saves, "Back" discards.
+export const closeAltTextEditor = async (page: Page, buttonText: 'Done' | 'Back') => {
+  const [button] = await findByText(page, DIALOG_BUTTON_SELECTOR, buttonText);
+  if (!button) {
+    throw new Error(`No "${buttonText}" button in the alt text editor`);
+  }
+  await button.click();
+  await page.waitForFunction(
+    text => !Array.from(document.querySelectorAll('[role="dialog"] [role="button"]'))
+      .some(el => el.textContent?.trim() === text),
+    { timeout: 5000 }, buttonText);
+};
 
 export default class ThreadsPoster extends Poster {
 
@@ -186,21 +250,12 @@ export default class ThreadsPoster extends Poster {
   };
 
   override addImageDescription = async (page: Page, description: string) => {
-    if (this.uploadedImageCount > 1) {
-      return;
-    }
-    const altButtons = await page.$$('text/Alt');
-    // TODO: After 2 images, we need to scroll the carousel first.
-    const buttonWeWant = altButtons[this.addedImageDescriptionCount];
-    await buttonWeWant.click();
-    // Wait for animation
-    await delay(1.5);
-    await page.waitForSelector('[role="textbox"]');
-    await page.type('[role="textbox"]', description);
-    const btn = await page.waitForSelector('text/Done');
-    if (btn) {
-      await btn.click();
-    }
+    // Called right after each upload, so this image's index is the number of
+    // descriptions added so far.
+    const field = await openAltTextEditor(page, this.addedImageDescriptionCount);
+    await field.click();
+    await page.keyboard.type(description);
+    await closeAltTextEditor(page, 'Done');
     this.addedImageDescriptionCount++;
   };
 }

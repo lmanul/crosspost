@@ -1,4 +1,4 @@
-import { type Page } from 'puppeteer';
+import { type HTTPRequest, type Page } from 'puppeteer';
 import { ContentBundle } from '../../provider';
 
 export type CheckResult = {
@@ -11,9 +11,9 @@ export type CheckResult = {
 // content bundle. Each check resolves with a short success summary, or throws
 // with an explanation of what is wrong.
 export default abstract class Verifier {
-  // Requests matching this (method + URL) would publish the post. The test
-  // harness watches for them and fails loudly if one is ever sent.
-  abstract publishRequest: { method: string; urlPattern: RegExp };
+  // True for a request that would publish the post. The test harness checks
+  // every request and fails loudly if one of these is ever sent.
+  abstract isPublishRequest: (request: HTTPRequest) => boolean;
 
   abstract checkMainText: (page: Page, expected: string) => Promise<string>;
   abstract checkImagesAttached: (page: Page, expectedCount: number) => Promise<string>;

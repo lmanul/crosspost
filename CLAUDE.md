@@ -102,7 +102,12 @@ when adding a poster.
   than a file chooser.
 - **Threads** has a large commented-out `getAddImageButton` block documenting a
   failed attempt at clicking the attach-media SVG; it currently uses the hidden
-  file input instead, and only handles alt text for a single image.
+  file input instead. Alt text lives behind each image's "•••" button (text
+  "Attachment actions") → "Add alt text" menu item; the editor then replaces
+  the composer view inside the same dialog (no new `role="dialog"`), with
+  "Back" (discard) and "Done" (save). `openAltTextEditor` /
+  `closeAltTextEditor` in [posters/threads.ts](posters/threads.ts) are exported
+  and shared with the test's verifier.
 - **Bluesky** gets a 60s initial page-load timeout because it is slow, and its
   UI renders two "Add alt text" buttons per image (hence the `2 * (n-1)`
   indexing).
@@ -184,7 +189,8 @@ a `./run` browser window is still open (Chrome's profile lock).
   screenshot is logged but doesn't fail the test. If composing itself throws,
   the page is saved as `<service>-failure.png` instead: look at it first.
 - On any failure (compose or check), the harness also writes
-  `tests/screenshots/<service>-failure.json`: URL, dialog count, every input /
+  `tests/screenshots/<service>-failure.json`: URL, dialog count, images with
+  their `alt` attributes, every input /
   textarea / contenteditable with its value, and every button, `aria-label`,
   and `data-testid` on the page. Fix stale selectors from this file instead of
   opening another session on the site. Old failure files are deleted at the
@@ -194,8 +200,9 @@ a `./run` browser window is still open (Chrome's profile lock).
   `checkReadyToPost`, `checkImageDescriptions`; each resolves with a short
   success summary or throws an explanation. `verify` runs all of them so one
   failure doesn't hide the others.
-- `publishRequest` on each verifier describes the network request that would
-  publish (for Mastodon, `POST /api/v1/statuses`). The harness listens for it
+- `isPublishRequest` on each verifier recognizes the network request that
+  would publish (for Mastodon, `POST /api/v1/statuses`; it gets the whole
+  `HTTPRequest`, so it can look at a GraphQL body when the URL isn't enough). The harness listens for it
   and adds a "nothing published" check. It detects, it does not block —
   verifiers themselves must only *read* the submit button, never click it.
 
@@ -205,6 +212,10 @@ registered under the poster name `bsky` (so `./test bsky`, not `./test bluesky`)
 Bluesky's web app exposes React Native test ids as `data-testid`
 (`composerPublishBtn`, `altTextButton`, `removePhotoButton`, …); prefer those
 over `aria-label`s, several of which are ambiguous.
+[tests/verifiers/threads.ts](tests/verifiers/threads.ts) passes as well. It
+reuses the poster's alt text helpers, counts one "Remove" button per image, and
+reads each alt text by opening the editor and leaving with "Back", so nothing is
+saved.
 [tests/verifiers/instagram.ts](tests/verifiers/instagram.ts) is written but has
 never gotten as far as verifying: as of 2026-09-15, Instagram's dialog shows
 "Something went wrong" as soon as "Next" is clicked on the crop step (no

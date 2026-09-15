@@ -10,6 +10,7 @@ import Verifier, { type CheckResult } from './verifiers/verifier';
 import BlueskyVerifier from './verifiers/bluesky';
 import InstagramVerifier from './verifiers/instagram';
 import MastodonVerifier from './verifiers/mastodon';
+import ThreadsVerifier from './verifiers/threads';
 
 // Relative to the repo root, like CONTENT_DIR in index.ts.
 const FIXTURE_CONTENT_DIR = 'tests/content';
@@ -22,6 +23,7 @@ const VERIFIERS: Record<string, () => Verifier> = {
   bsky: () => new BlueskyVerifier(),
   instagram: () => new InstagramVerifier(),
   mastodon: () => new MastodonVerifier(),
+  threads: () => new ThreadsVerifier(),
 };
 
 type Outcome = 'PASS' | 'FAIL' | 'SKIP';
@@ -70,8 +72,7 @@ const main = async () => {
     // but we can notice it and fail the test.
     let publishAttempted = false;
     tab.on('request', request => {
-      if (request.method() === verifier.publishRequest.method
-        && verifier.publishRequest.urlPattern.test(request.url())) {
+      if (verifier.isPublishRequest(request)) {
         publishAttempted = true;
         console.error(`!!! ${name}: a publish request was sent: ${request.method()} ${request.url()}`);
       }
@@ -106,10 +107,21 @@ const main = async () => {
             url: location.href,
             title: document.title,
             dialogs: document.querySelectorAll('[role="dialog"]').length,
+            // Scoped to dialogs when there are any, to leave out the feed.
+            images: Array.from(document.querySelectorAll(
+              document.querySelector('[role="dialog"]') ? '[role="dialog"] img' : 'img'))
+              .map(img => ({
+                alt: img.getAttribute('alt'),
+                src: (img.getAttribute('src') ?? '').slice(0, 60),
+                width: (img as HTMLImageElement).width,
+                height: (img as HTMLImageElement).height,
+              }))
+              .slice(0, 200),
             fields: Array.from(document.querySelectorAll('input, textarea, [contenteditable="true"]'))
               .map(el => ({
                 ...describe(el),
                 placeholder: el.getAttribute('placeholder'),
+                ariaPlaceholder: el.getAttribute('aria-placeholder'),
                 value: (el as HTMLInputElement).value ?? (el as HTMLElement).innerText,
               })),
             interactive: Array.from(document.querySelectorAll(

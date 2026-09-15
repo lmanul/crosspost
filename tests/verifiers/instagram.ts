@@ -1,4 +1,4 @@
-import { type Page } from 'puppeteer';
+import { type HTTPRequest, type Page } from 'puppeteer';
 import Verifier from './verifier';
 
 // By the end of InstagramPoster, the "Create new post" dialog is on its final
@@ -13,7 +13,8 @@ export default class InstagramVerifier extends Verifier {
 
   // Web posts go through media/configure/ (single image) or
   // media/configure_sidecar/ (carousel).
-  publishRequest = { method: 'POST', urlPattern: /\/configure(_sidecar)?\/?(\?|$)/ };
+  isPublishRequest = (request: HTTPRequest) =>
+    request.method() === 'POST' && /\/configure(_sidecar)?\/?(\?|$)/.test(request.url());
 
   override checkMainText = async (page: Page, expected: string) => {
     const caption = await page.$(CAPTION_SELECTOR);
