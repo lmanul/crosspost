@@ -3,6 +3,13 @@ import { TimeoutError, type Page } from 'puppeteer';
 import { delay } from '../util';
 
 const NEW_POST_BUTTON_SELECTOR = '[aria-label="New post"]';
+// The caption box has been labelled both "Write a caption..." and "Add a
+// caption..."; it is the dialog's only contenteditable textbox.
+export const CAPTION_SELECTOR = [
+  '[role="dialog"] div[role="textbox"][contenteditable="true"]',
+  '[aria-label="Add a caption..."]',
+  '[aria-label="Write a caption..."]',
+].join(', ');
 
 export default class InstagramPoster extends Poster {
 
@@ -115,7 +122,7 @@ export default class InstagramPoster extends Poster {
     // Wait for animation
     await delay(1);
 
-    const mainInput = await page.waitForSelector('[aria-label="Write a caption..."]');
+    const mainInput = await page.waitForSelector(CAPTION_SELECTOR);
     if (mainInput) {
       await mainInput.focus();
     }

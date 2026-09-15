@@ -21,6 +21,23 @@ export const findByText = async (
   return matches;
 };
 
+// Resolves once the element's on-screen position stops changing (e.g. after
+// the image strip finishes scrolling), or after about 2 seconds.
+const waitUntilStill = async (handle: ElementHandle<Element>) => {
+  let last = '';
+  for (let i = 0; i < 20; i++) {
+    const position = await handle.evaluate(el => {
+      const rect = el.getBoundingClientRect();
+      return `${Math.round(rect.x)},${Math.round(rect.y)}`;
+    });
+    if (position === last) {
+      return;
+    }
+    last = position;
+    await delay(0.1);
+  }
+};
+
 // Opens the alt text editor for the index-th attached image ("•••" menu, then
 // "Add alt text") and returns its text field. The editor replaces the composer
 // view inside the same dialog.
@@ -30,8 +47,19 @@ export const openAltTextEditor = async (page: Page, index: number): Promise<Elem
   if (!actionButton) {
     throw new Error(`No "Attachment actions" button for image #${index + 1} (found ${actionButtons.length})`);
   }
-  await actionButton.click();
-  await page.waitForSelector('[role="menuitem"]', { timeout: 5000 });
+  // The image strip scrolls sideways, and a click while it is still moving can
+  // miss the button: bring it into view, let it settle, and retry once.
+  let menuOpened = false;
+  for (let attempt = 0; attempt < 2 && !menuOpened; attempt++) {
+    await actionButton.evaluate(el => el.scrollIntoView({ block: 'nearest', inline: 'center' }));
+    await waitUntilStill(actionButton);
+    await actionButton.click();
+    menuOpened = await page.waitForSelector('[role="menuitem"]', { timeout: 3000 })
+      .then(() => true, () => false);
+  }
+  if (!menuOpened) {
+    throw new Error(`The attachment menu for image #${index + 1} did not open`);
+  }
   const [altTextItem] = await findByText(page, '[role="menuitem"]', /alt text/i);
   if (!altTextItem) {
     throw new Error('No alt text item in the attachment menu');

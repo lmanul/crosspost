@@ -138,7 +138,7 @@ export default class LinkedInPoster extends Poster {
       throw new Error('Could not find the visible LinkedIn login fields');
     }
     for (const [field, value] of [[userField, user], [passwordField, password]] as const) {
-      await field.click({ clickCount: 3 });
+      await field.click({ count: 3 });
       await page.keyboard.press('Backspace');
       await page.keyboard.type(value, { delay: 40 });
     }

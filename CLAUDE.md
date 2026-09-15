@@ -54,6 +54,31 @@ wrote. Anyone else gets their hand-edited `config.txt` left untouched.
 Because Puppeteer launches with `headless: false`, running this needs a real
 display.
 
+### Puppeteer and its Chrome
+
+Puppeteer is on 25.x, which bundles Chrome for Testing 153 (upgraded
+2026-09-15 from 23.x / Chrome 131, whose Instagram composer failed with
+"Something went wrong" even by hand, while Firefox worked). Two setup traps:
+
+- npm (11+) blocks Puppeteer's `postinstall`, so `npm install` does **not**
+  download Chrome. Install it explicitly.
+- The user's `PATH` has personal scripts in `~/repos/sak/` that shadow system
+  tools, notably `unzip` (and apparently `du`). Puppeteer's installer shells out
+  to `unzip`, the script rejects its flags but exits 0, and the install
+  "succeeds" with an empty `~/.cache/puppeteer/chrome/linux-<version>/` folder
+  (then launches fail with "Could not find Chrome"). Delete that empty folder
+  and install with the real tools first on `PATH`:
+
+  ```
+  PATH=/usr/bin:$PATH npx puppeteer browsers install chrome
+  ```
+
+Upgrading Chrome upgrades the shared profile (`util.ts`'s `userDataDir`) on
+first launch, and older Chrome builds may refuse it afterwards. The profile as it
+was under Chrome 131 is backed up at
+`/media/manucornet/Data/throwaway/chrome_puppeteer-chrome131-backup-20260915`.
+Puppeteer 25 removed `click({ clickCount })`; use `click({ count })`.
+
 ## Architecture
 
 | File | Role |
@@ -107,7 +132,12 @@ when adding a poster.
   the composer view inside the same dialog (no new `role="dialog"`), with
   "Back" (discard) and "Done" (save). `openAltTextEditor` /
   `closeAltTextEditor` in [posters/threads.ts](posters/threads.ts) are exported
-  and shared with the test's verifier.
+  and shared with the test's verifier. The image strip scrolls sideways; on
+  Chrome 153 a click on the 4th image's "•••" missed while it was still moving,
+  so `openAltTextEditor` scrolls the button into view, waits for it to stop
+  moving, and retries the click once. Threads also copies saved alt texts into
+  each preview's `img[alt]`, which could let the verifier read them without
+  opening the editor.
 - **LinkedIn**'s feed is a newer React app with hashed class names, but the
   share box (composer and media editor) is an older Ember app rendered inside
   `#interop-outlet`'s **shadow root**, where `document.querySelector` can't see
@@ -121,12 +151,13 @@ when adding a poster.
   image (textarea, then the primary "Add" button); "Next" returns to the
   composer, which can take several seconds to re-render. Alt texts can only be
   read back by reopening the editor ("Edit media preview"). Images aren't
-  uploaded until "Post" is clicked. **Pitfall:** don't
-  `page.waitForSelector('#interop-outlet >>> …')` for something that appears
-  later; it doesn't notice elements added inside the shadow root and times out
-  with the element on screen. Use `waitForInterop` in
-  [posters/linkedin.ts](posters/linkedin.ts), which polls the shadow root.
-  (Immediate `page.$('#interop-outlet >>> …')` queries are fine.)
+  uploaded until "Post" is clicked. Wait for share box elements with
+  `waitForInterop` in [posters/linkedin.ts](posters/linkedin.ts), which polls
+  the shadow root and also requires visibility. (On Puppeteer 23,
+  `page.waitForSelector('#interop-outlet >>> …')` never noticed elements added
+  to the shadow root later and timed out with the element on screen; Puppeteer
+  25 no longer has that bug, but `waitForInterop` stays. Immediate
+  `page.$('#interop-outlet >>> …')` queries have always been fine.)
 - **LinkedIn login**: the logged-out pages follow the browser locale (Japanese
   here), even though the logged-in UI is English. The login page has no
   `<form>` and renders two copies of its fields, one hidden, with generated
@@ -232,7 +263,8 @@ a `./run` browser window is still open (Chrome's profile lock).
   and adds a "nothing published" check. It detects, it does not block —
   verifiers themselves must only *read* the submit button, never click it.
 
-Status: [tests/verifiers/mastodon.ts](tests/verifiers/mastodon.ts) passes.
+Status: all five services pass, each re-run after the Puppeteer 25 / Chrome 153
+upgrade (2026-09-15). [tests/verifiers/mastodon.ts](tests/verifiers/mastodon.ts) passes.
 [tests/verifiers/bluesky.ts](tests/verifiers/bluesky.ts) passes too; it is
 registered under the poster name `bsky` (so `./test bsky`, not `./test bluesky`).
 Bluesky's web app exposes React Native test ids as `data-testid`
@@ -249,11 +281,16 @@ poster's exported share box helpers. Its `isPublishRequest` deliberately ignores
 the POSTs that merely open the composer (`voyagerContentcreationDashSharebox`,
 `sharing.LaunchShareboxTracking`); the actual create-post request has never been
 observed, since nothing was ever posted, so its patterns are educated guesses.
-[tests/verifiers/instagram.ts](tests/verifiers/instagram.ts) is written but has
-never gotten as far as verifying: as of 2026-09-15, Instagram's dialog shows
-"Something went wrong" as soon as "Next" is clicked on the crop step (no
-network request fails; it is client-side), so `InstagramPoster.addMainText`
-times out. To add a service, write a `Verifier` subclass and register it in
+[tests/verifiers/instagram.ts](tests/verifiers/instagram.ts) passes too, since
+the Puppeteer 25 / Chrome 153 upgrade (2026-09-15). Before that, on Chrome 131,
+Instagram's post dialog showed "Something went wrong" right after the images
+were added, even when posting by hand in that browser; pauses and slower typing
+didn't help. The caption box is now labelled "Add a caption..." (was "Write a
+caption..."); `CAPTION_SELECTOR` in [posters/instagram.ts](posters/instagram.ts)
+matches the dialog's contenteditable textbox and is shared with the verifier.
+The verifier finds "Share" by exact text, since the dialog also has a "Share to"
+section header.
+To add a service, write a `Verifier` subclass and register it in
 `VERIFIERS` in [tests/e2e.ts](tests/e2e.ts).
 
 Verifier selectors rot exactly like poster selectors. The Mastodon verifier

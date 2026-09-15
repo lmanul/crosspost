@@ -1,13 +1,13 @@
 import { type HTTPRequest, type Page } from 'puppeteer';
+import { CAPTION_SELECTOR } from '../../posters/instagram';
 import Verifier from './verifier';
 
 // By the end of InstagramPoster, the "Create new post" dialog is on its final
 // step: caption typed, Accessibility section expanded, one alt text input per
 // image, and a "Share" button in the dialog header.
 const DIALOG_SELECTOR = '[role="dialog"]';
-const CAPTION_SELECTOR = '[aria-label="Write a caption..."]';
 const ALT_TEXT_INPUT_SELECTOR = 'input[placeholder="Write alt text..."]';
-const SHARE_BUTTON_SELECTOR = `${DIALOG_SELECTOR} ::-p-text(Share)`;
+const DIALOG_BUTTON_SELECTOR = `${DIALOG_SELECTOR} [role="button"], ${DIALOG_SELECTOR} button`;
 
 export default class InstagramVerifier extends Verifier {
 
@@ -39,16 +39,20 @@ export default class InstagramVerifier extends Verifier {
   };
 
   override checkReadyToPost = async (page: Page) => {
-    const shareButton = await page.$(SHARE_BUTTON_SELECTOR);
+    // Exact text: the dialog also has a "Share to" section header.
+    let shareButton = null;
+    for (const button of await page.$$(DIALOG_BUTTON_SELECTOR)) {
+      if (await button.evaluate(el => el.textContent?.trim() === 'Share')) {
+        shareButton = button;
+        break;
+      }
+    }
     if (!shareButton) {
       throw new Error('could not find the "Share" button in the dialog');
     }
     // Only read the button's state. Never click it.
-    const disabled = await shareButton.evaluate(el => {
-      const button = el.closest('[role="button"], button') ?? el;
-      return button.getAttribute('aria-disabled') === 'true'
-        || (button as HTMLButtonElement).disabled === true;
-    });
+    const disabled = await shareButton.evaluate(el =>
+      el.getAttribute('aria-disabled') === 'true' || (el as HTMLButtonElement).disabled === true);
     if (disabled) {
       throw new Error('"Share" button is disabled');
     }
