@@ -9,6 +9,7 @@ import SERVICES from '../posters/registry';
 import Verifier, { type CheckResult } from './verifiers/verifier';
 import BlueskyVerifier from './verifiers/bluesky';
 import InstagramVerifier from './verifiers/instagram';
+import LinkedInVerifier from './verifiers/linkedin';
 import MastodonVerifier from './verifiers/mastodon';
 import ThreadsVerifier from './verifiers/threads';
 
@@ -22,6 +23,7 @@ const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots');
 const VERIFIERS: Record<string, () => Verifier> = {
   bsky: () => new BlueskyVerifier(),
   instagram: () => new InstagramVerifier(),
+  linkedin: () => new LinkedInVerifier(),
   mastodon: () => new MastodonVerifier(),
   threads: () => new ThreadsVerifier(),
 };

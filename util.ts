@@ -89,7 +89,10 @@ const saveDomDump = async (page: Page, filePath: string) => {
             ...describe(el),
             placeholder: el.getAttribute('placeholder'),
             ariaPlaceholder: el.getAttribute('aria-placeholder'),
-            value: (el as HTMLInputElement).value ?? (el as HTMLElement).innerText,
+            // A failure on a login page must not write the password to disk.
+            value: el.getAttribute('type') === 'password'
+              ? '[redacted]'
+              : (el as HTMLInputElement).value ?? (el as HTMLElement).innerText,
           })),
         interactive: Array.from(document.querySelectorAll(
           'button, [role="button"], [aria-label], [data-testid]'))

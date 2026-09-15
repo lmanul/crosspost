@@ -108,6 +108,32 @@ when adding a poster.
   "Back" (discard) and "Done" (save). `openAltTextEditor` /
   `closeAltTextEditor` in [posters/threads.ts](posters/threads.ts) are exported
   and shared with the test's verifier.
+- **LinkedIn**'s feed is a newer React app with hashed class names, but the
+  share box (composer and media editor) is an older Ember app rendered inside
+  `#interop-outlet`'s **shadow root**, where `document.querySelector` can't see
+  it. Reach it with Puppeteer's pierce combinator: `#interop-outlet >>> .ql-editor`.
+  Its classes (`share-actions__primary-action`, `media-editor-*`) and icon ids
+  (`svg[data-test-icon="alt-text-medium"]`, `add-medium`, `edit-small`) are
+  stable and language-independent; prefer them over labels. Flow: the feed's
+  `a[href*="/preload/sharebox"]` opens the composer; "Add media" opens a file
+  chooser and switches to the media editor; later images come from the editor's
+  own "Add" and become the selected image; alt text is a tool on the selected
+  image (textarea, then the primary "Add" button); "Next" returns to the
+  composer, which can take several seconds to re-render. Alt texts can only be
+  read back by reopening the editor ("Edit media preview"). Images aren't
+  uploaded until "Post" is clicked. **Pitfall:** don't
+  `page.waitForSelector('#interop-outlet >>> …')` for something that appears
+  later; it doesn't notice elements added inside the shadow root and times out
+  with the element on screen. Use `waitForInterop` in
+  [posters/linkedin.ts](posters/linkedin.ts), which polls the shadow root.
+  (Immediate `page.$('#interop-outlet >>> …')` queries are fine.)
+- **LinkedIn login**: the logged-out pages follow the browser locale (Japanese
+  here), even though the logged-in UI is English. The login page has no
+  `<form>` and renders two copies of its fields, one hidden, with generated
+  ids: `login()` types into the visible `input[type="email"]` /
+  `input[type="password"]` and submits with Enter. LinkedIn may answer with an
+  email verification code (`/checkpoint/challenge/`); `login()` then throws, and
+  the user has to complete it by hand in the Puppeteer profile.
 - **Bluesky** gets a 60s initial page-load timeout because it is slow, and its
   UI renders two "Add alt text" buttons per image (hence the `2 * (n-1)`
   indexing).
@@ -216,6 +242,13 @@ over `aria-label`s, several of which are ambiguous.
 reuses the poster's alt text helpers, counts one "Remove" button per image, and
 reads each alt text by opening the editor and leaving with "Back", so nothing is
 saved.
+[tests/verifiers/linkedin.ts](tests/verifiers/linkedin.ts) passes as well (first
+run 2026-09-15). It reads alt texts by reopening the media editor and leaving
+each alt text tool without saving, then returns to the composer; it reuses the
+poster's exported share box helpers. Its `isPublishRequest` deliberately ignores
+the POSTs that merely open the composer (`voyagerContentcreationDashSharebox`,
+`sharing.LaunchShareboxTracking`); the actual create-post request has never been
+observed, since nothing was ever posted, so its patterns are educated guesses.
 [tests/verifiers/instagram.ts](tests/verifiers/instagram.ts) is written but has
 never gotten as far as verifying: as of 2026-09-15, Instagram's dialog shows
 "Something went wrong" as soon as "Next" is clicked on the crop step (no
