@@ -1,4 +1,4 @@
-import { mkdir } from 'fs/promises';
+import { mkdir, rm, writeFile } from 'fs/promises';
 import path from 'path';
 import { type Page } from 'puppeteer';
 import parseConfig from '../configparser';
@@ -7,16 +7,19 @@ import { ContentProvider } from '../provider';
 import { makeBrowserWindow, newTabInBrowser } from '../util';
 import SERVICES from '../posters/registry';
 import Verifier, { type CheckResult } from './verifiers/verifier';
+import BlueskyVerifier from './verifiers/bluesky';
 import InstagramVerifier from './verifiers/instagram';
 import MastodonVerifier from './verifiers/mastodon';
 
 // Relative to the repo root, like CONTENT_DIR in index.ts.
 const FIXTURE_CONTENT_DIR = 'tests/content';
-// One <service>.png per run, overwritten each time. Git-ignored.
+// <service>.png per run, plus <service>-failure.{png,json} when something
+// fails. Git-ignored.
 const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots');
 
 // Services without an entry here are reported as skipped.
 const VERIFIERS: Record<string, () => Verifier> = {
+  bsky: () => new BlueskyVerifier(),
   instagram: () => new InstagramVerifier(),
   mastodon: () => new MastodonVerifier(),
 };
@@ -85,12 +88,56 @@ const main = async () => {
       }
     };
 
+    // Enough of the page to fix a stale selector without another session on
+    // the site (see "Go easy on real accounts" in CLAUDE.md).
+    const saveDomDump = async (fileName: string) => {
+      const dumpPath = path.join(SCREENSHOTS_DIR, fileName);
+      try {
+        const dump = await tab.evaluate(() => {
+          const describe = (el: Element) => ({
+            tag: el.tagName.toLowerCase(),
+            role: el.getAttribute('role'),
+            ariaLabel: el.getAttribute('aria-label'),
+            testId: el.getAttribute('data-testid'),
+            ariaDisabled: el.getAttribute('aria-disabled'),
+            text: (el.textContent ?? '').trim().slice(0, 80),
+          });
+          return {
+            url: location.href,
+            title: document.title,
+            dialogs: document.querySelectorAll('[role="dialog"]').length,
+            fields: Array.from(document.querySelectorAll('input, textarea, [contenteditable="true"]'))
+              .map(el => ({
+                ...describe(el),
+                placeholder: el.getAttribute('placeholder'),
+                value: (el as HTMLInputElement).value ?? (el as HTMLElement).innerText,
+              })),
+            interactive: Array.from(document.querySelectorAll(
+              'button, [role="button"], [aria-label], [data-testid]'))
+              .map(describe)
+              .slice(0, 1000),
+          };
+        });
+        await mkdir(SCREENSHOTS_DIR, { recursive: true });
+        await writeFile(dumpPath, JSON.stringify(dump, null, 2));
+        console.log(`DOM dump saved to ${path.relative(process.cwd(), dumpPath)}`);
+      } catch (e) {
+        console.log(`Could not save DOM dump: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    };
+
+    // Don't let failure artifacts from an earlier run pass for this one's.
+    for (const extension of ['png', 'json']) {
+      await rm(path.join(SCREENSHOTS_DIR, `${name}-failure.${extension}`), { force: true });
+    }
+
     try {
       await composePost(poster, tab, bundle, config[name]);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.log(`  ✗ compose: ${message}`);
       await saveScreenshot(`${name}-failure.png`);
+      await saveDomDump(`${name}-failure.json`);
       outcomes.push([name, 'FAIL', 'compose step threw']);
       continue;
     }
@@ -108,6 +155,9 @@ const main = async () => {
     printResults(results);
 
     const failed = results.filter(r => !r.passed).length;
+    if (failed > 0) {
+      await saveDomDump(`${name}-failure.json`);
+    }
     outcomes.push(failed === 0
       ? [name, 'PASS', `${results.length} checks`]
       : [name, 'FAIL', `${failed} of ${results.length} checks failed`]);

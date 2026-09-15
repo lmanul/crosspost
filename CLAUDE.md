@@ -183,6 +183,12 @@ a `./run` browser window is still open (Chrome's profile lock).
   taken whenever composing succeeded, even if checks failed, and a failed
   screenshot is logged but doesn't fail the test. If composing itself throws,
   the page is saved as `<service>-failure.png` instead: look at it first.
+- On any failure (compose or check), the harness also writes
+  `tests/screenshots/<service>-failure.json`: URL, dialog count, every input /
+  textarea / contenteditable with its value, and every button, `aria-label`,
+  and `data-testid` on the page. Fix stale selectors from this file instead of
+  opening another session on the site. Old failure files are deleted at the
+  start of each service's run.
 - [tests/verifiers/verifier.ts](tests/verifiers/verifier.ts) — abstract
   `Verifier`. Subclasses implement `checkMainText`, `checkImagesAttached`,
   `checkReadyToPost`, `checkImageDescriptions`; each resolves with a short
@@ -194,6 +200,11 @@ a `./run` browser window is still open (Chrome's profile lock).
   verifiers themselves must only *read* the submit button, never click it.
 
 Status: [tests/verifiers/mastodon.ts](tests/verifiers/mastodon.ts) passes.
+[tests/verifiers/bluesky.ts](tests/verifiers/bluesky.ts) passes too; it is
+registered under the poster name `bsky` (so `./test bsky`, not `./test bluesky`).
+Bluesky's web app exposes React Native test ids as `data-testid`
+(`composerPublishBtn`, `altTextButton`, `removePhotoButton`, …); prefer those
+over `aria-label`s, several of which are ambiguous.
 [tests/verifiers/instagram.ts](tests/verifiers/instagram.ts) is written but has
 never gotten as far as verifying: as of 2026-09-15, Instagram's dialog shows
 "Something went wrong" as soon as "Next" is clicked on the crop step (no
