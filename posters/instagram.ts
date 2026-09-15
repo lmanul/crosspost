@@ -2,11 +2,19 @@ import Poster from './poster';
 import { TimeoutError, type Page } from 'puppeteer';
 import { delay } from '../util';
 
+const NEW_POST_BUTTON_SELECTOR = '[aria-label="New post"]';
+
 export default class InstagramPoster extends Poster {
 
   constructor() {
     super('instagram', 'https://www.instagram.com');
   }
+
+  override isLoggedIn = async (page: Page): Promise<boolean> => {
+    // login() handles both variants of the login form.
+    return this.waitForLoginState(
+      page, NEW_POST_BUTTON_SELECTOR, '[name="username"], [name="email"]');
+  };
 
   override login = async (page: Page, user: string, password: string) => {
     let uField;
@@ -51,7 +59,7 @@ export default class InstagramPoster extends Poster {
   };
 
   override loadNewPostPage = async (page: Page) => {
-    const newPostButton = await page.waitForSelector('[aria-label="New post"]');
+    const newPostButton = await page.waitForSelector(NEW_POST_BUTTON_SELECTOR);
     if (newPostButton) {
       await newPostButton.click();
     }

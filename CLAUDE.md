@@ -1,0 +1,212 @@
+# CLAUDE.md
+
+Guidance for Claude Code when working in this repository.
+
+## What this project is
+
+`crosspost` is a small personal automation tool that publishes the same post
+(text + images with alt text) to several social networks by **driving a real
+Chrome browser with Puppeteer** — there are no API clients here. Every
+integration is UI scraping: it clicks buttons, types into `contenteditable`
+fields, and waits for selectors.
+
+Supported targets: Bluesky, Instagram, Mastodon, Threads, LinkedIn.
+X/Twitter is deliberately not supported (see the FAQ in [README.md](README.md)).
+
+**Important behavioral note:** the run intentionally stops *before* publishing.
+It fills in every composer and leaves the tabs open so the user can review and
+click "Post" manually. Do not add an automatic submit step unless explicitly
+asked.
+
+## Running it
+
+```
+./run              # the normal entry point (Python wrapper)
+npm run start      # just the TypeScript part: ts-node index.ts
+./test [service…]  # end-to-end tests (see below); wraps `npm test`
+npx tsc --noEmit   # typecheck (currently clean; there is no linter)
+```
+
+[run](run) is a Python script that: runs `npm install`, primes `config.txt`
+from the user's own password manager (only when `$USER == manucornet`), runs
+`npm run start`, then `git checkout config.txt` to discard the credentials it
+wrote. Anyone else gets their hand-edited `config.txt` left untouched.
+
+Because Puppeteer launches with `headless: false`, running this needs a real
+display.
+
+## Architecture
+
+| File | Role |
+| --- | --- |
+| [index.ts](index.ts) | Orchestrator: builds the poster list, reads config + content, opens a tab per service, calls `composePost` |
+| [compose.ts](compose.ts) | `composePost` — the per-service posting sequence, shared by `index.ts` and the tests |
+| [posters/poster.ts](posters/poster.ts) | `Poster` base class — the lifecycle every service implements |
+| [posters/registry.ts](posters/registry.ts) | `SERVICES`: poster name → factory. Add new posters here |
+| [posters/*.ts](posters/) | One subclass per service, overriding whatever that site's UI requires |
+| [tests/](tests/) | End-to-end test harness, per-service verifiers, fixture post |
+| [provider.ts](provider.ts) | Reads `content/` into a `ContentBundle` (`mainText` + `images[]`) |
+| [configparser.ts](configparser.ts) | Parses `config.txt` into `{ service: [user, pass] }` |
+| [util.ts](util.ts) | Browser/tab creation, `delay()`, a role+text element finder |
+
+### The Poster lifecycle
+
+[compose.ts](compose.ts) calls these in order for each service:
+
+1. `loadInitialPage` — `page.goto(baseUrl)`
+2. `maybeDismissDisclaimers` — cookie banners, welcome modals
+3. `isLoggedIn` → if false, `login(page, user, password)`
+4. `loadNewPostPage` — click the composer open
+5. For each image: `addOneImage` (via `getAddImageButton` + `waitForImageAdded`), then `addImageDescription`
+6. `addMainText`
+
+Base-class methods are mostly no-ops or generic `[contenteditable=true][role=textbox]`
+handling; subclasses override what they need. `uploadedImageCount` and
+`addedImageDescriptionCount` are instance counters that several posters rely on
+to pick the *n*-th alt-text button in the DOM.
+
+Note the methods are **arrow-function class properties**, not prototype
+methods, so subclasses use `override name = async (...) => {}`. Keep that style
+when adding a poster.
+
+### Service-specific quirks worth knowing
+
+- **Instagram** is the odd one out in two ways: it is skipped entirely when
+  there are no images, and its alt texts must be entered *after* the caption
+  (`addMainText` is what advances through the crop/filter steps and expands the
+  Accessibility panel). [index.ts](index.ts) (skip) and
+  [compose.ts](compose.ts) (ordering) special-case `instanceof InstagramPoster`.
+- **Instagram and Threads share credentials** — [configparser.ts](configparser.ts)
+  copies the `instagram` entry to `threads` automatically.
+- **Mastodon** hardcodes the server `https://macaw.social` (there is a `TODO`
+  to make it configurable) and uploads via a hidden `input[type=file]` rather
+  than a file chooser.
+- **Threads** has a large commented-out `getAddImageButton` block documenting a
+  failed attempt at clicking the attach-media SVG; it currently uses the hidden
+  file input instead, and only handles alt text for a single image.
+- **Bluesky** gets a 60s initial page-load timeout because it is slow, and its
+  UI renders two "Add alt text" buttons per image (hence the `2 * (n-1)`
+  indexing).
+- **Threads / Instagram** sometimes need class-list scraping to find a button
+  (`page.evaluate` → read `classList` → `waitForSelector('.a.b.c')`), because
+  the markup has no stable label. `findElementWithRoleContainingText` in
+  [util.ts](util.ts) is the generic form of this trick.
+
+### Errors
+
+`TimeoutError` from one service is caught, logged, and the loop moves on to the
+next. Setting `DEBUG = true` in [index.ts](index.ts#L13) re-throws instead —
+useful when a selector has rotted.
+
+## Content and config format
+
+`content/` holds the post:
+
+- `main.txt` — the post body (required; throws if missing)
+- `descriptions.txt` — alt texts, separated by **blank lines**, in filename-sorted
+  order of the images. The count must match the image count exactly or
+  `ContentProvider` throws.
+- `*.png` / `*.jpg` — attachments, used in sorted filename order (hence the
+  `1_`, `2_`, … prefixes in the test fixture)
+
+`config.txt` is `service:username:password`, one per line, `#` for comments.
+Two gotchas:
+
+- The key must match the poster's `name` field, **not** the site's brand name.
+  Bluesky's poster is named `bsky`, so the line is `bsky:user:pass`. The
+  commented sample in [config.txt](config.txt) still says `bluesky:` and has no
+  `linkedin:` line — it is stale; [run](run) writes the correct keys.
+- `line.split(':', 3)` means a password containing `:` gets truncated.
+
+## End-to-end tests
+
+### Definition
+
+An **end-to-end test** for one service means:
+
+1. Pick a single service (e.g. `mastodon`).
+2. Launch a browser with the same `userDataDir` as [util.ts](util.ts) (i.e. via
+   `makeBrowserWindow`), so existing logged-in sessions are reused.
+3. Perform everything the main loop in [index.ts](index.ts) does for that
+   service: load page, dismiss disclaimers, log in if needed, open the
+   composer, attach every image with its alt text, type the main text.
+4. **Never actually post anything.**
+5. Verify, using Puppeteer, that everything worked: the main text body matches,
+   every image is attached, every alt text is set, and the post is genuinely
+   ready to be created (the submit control is enabled).
+
+The test suite runs this for every available service.
+
+### Running
+
+```
+./test                        # every service; ones without a verifier are SKIPped
+./test mastodon               # one service
+./test mastodon --keep-open   # leave Chrome open afterwards to inspect the composer
+```
+
+[test](test) is a Python wrapper mirroring [run](run): it imports `run` to reuse
+`prepare`/`prime_config_file`/`cleanup` (so credentials come from the same
+place), runs `npm test -- <args>`, and restores `config.txt` in a `finally`.
+Exit code is 1 if any service fails, 2 for an unknown service name.
+
+Because the tests share the Chrome profile with `./run`, they cannot run while
+a `./run` browser window is still open (Chrome's profile lock).
+
+### Structure
+
+- [tests/e2e.ts](tests/e2e.ts) — harness. Uses the fixture post in
+  [tests/content/](tests/content/) (4 images, deterministic text), **not** the
+  user's `content/`, so tests never compose a real pending post. Calls the same
+  `composePost` as `index.ts`, then the service's verifier.
+- After verifying, the harness saves a screenshot of the composed post to
+  `tests/screenshots/<service>.png` (git-ignored, overwritten each run). It is
+  taken whenever composing succeeded, even if checks failed, and a failed
+  screenshot is logged but doesn't fail the test.
+- [tests/verifiers/verifier.ts](tests/verifiers/verifier.ts) — abstract
+  `Verifier`. Subclasses implement `checkMainText`, `checkImagesAttached`,
+  `checkReadyToPost`, `checkImageDescriptions`; each resolves with a short
+  success summary or throws an explanation. `verify` runs all of them so one
+  failure doesn't hide the others.
+- `publishRequest` on each verifier describes the network request that would
+  publish (for Mastodon, `POST /api/v1/statuses`). The harness listens for it
+  and adds a "nothing published" check. It detects, it does not block —
+  verifiers themselves must only *read* the submit button, never click it.
+
+Status: only [tests/verifiers/mastodon.ts](tests/verifiers/mastodon.ts) exists
+so far. To add a service, write a `Verifier` subclass and register it in
+`VERIFIERS` in [tests/e2e.ts](tests/e2e.ts).
+
+Verifier selectors rot exactly like poster selectors. The Mastodon verifier
+leans on `.compose-form__upload`, `.icon-edit`, and the `#description` modal;
+when a check fails with a "still the right selector?" hint, re-inspect the page
+(`--keep-open` helps) before assuming the poster is broken.
+
+## Conventions
+
+- TypeScript with `strict: true`, run directly through `ts-node` — nothing is
+  ever built to `dist/`.
+- 2-space indent, semicolons, single quotes, `async`/`await` throughout.
+- Selector constants live at the top of each poster file in `SCREAMING_SNAKE_CASE`.
+- Progress is reported with plain `console.log`.
+- Commit messages are short imperative one-liners ("Fix Bluesky login page",
+  "Clean up tsconfig"), no body, no prefixes.
+- `util.ts` hardcodes a persistent Chrome profile at
+  `/home/manucornet/throwaway/chrome_puppeteer`, which is why sessions usually
+  survive between runs and `login()` is often skipped.
+- Paths in [provider.ts](provider.ts) are built from `__dirname` plus the
+  relative `content` dir, so the tool expects to be run from the repo root.
+
+## Maintenance reality
+
+Most of the git history is "fix X for updated UI". When something breaks, the
+cause is almost always that a site changed its DOM — the fix is to re-inspect
+the live page and update the selector in that one poster, not to restructure
+anything.
+
+Each poster implements `isLoggedIn`; the base version throws. Most use
+`waitForLoginState(page, loggedInSelector, loggedOutSelector)`, which resolves
+to whichever marker appears first. By convention the logged-in marker is what
+`loadNewPostPage` waits for, and the logged-out marker is the field `login()`
+types into, so keep them in sync when a selector changes. Mastodon's sign-in page
+is server-rendered, so it just checks for `#user_email` right after load.

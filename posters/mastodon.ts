@@ -3,6 +3,7 @@ import Poster from './poster';
 
 const UPLOAD_MODAL_DESCRIPTION_SELECTOR = '#description';
 const WARNING_ICON_SELECTOR = '.icon.icon-warning';
+const EMAIL_FIELD_SELECTOR = '#user_email';
 
 export default class MastodonPoster extends Poster {
 
@@ -11,10 +12,19 @@ export default class MastodonPoster extends Poster {
     super('mastodon', 'https://macaw.social/auth/sign_in');
   }
 
+  // The sign-in page only shows the login form when the session has expired;
+  // otherwise it redirects to the web app.
+  override isLoggedIn = async (page: Page): Promise<boolean> => {
+    return (await page.$(EMAIL_FIELD_SELECTOR)) === null;
+  };
+
   override login = async (page: Page, user: string, password: string) => {
-    await page.type('#user_email', user);
+    await page.type(EMAIL_FIELD_SELECTOR, user);
     await page.type('#user_password', password);
-    page.keyboard.press('Enter');
+    await Promise.all([
+      page.waitForNavigation(),
+      page.keyboard.press('Enter'),
+    ]);
   };
 
   override loadNewPostPage = async (page: Page) => {

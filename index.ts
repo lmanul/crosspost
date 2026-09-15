@@ -1,14 +1,12 @@
 import parseConfig from './configparser';
+import composePost from './compose';
 import { ContentBundle, ContentProvider } from './provider';
 import { makeBrowserWindow, newTabInBrowser } from './util';
 import { TimeoutError, type Page } from 'puppeteer';
 
 import InstagramPoster from './posters/instagram';
-import MastodonPoster from './posters/mastodon';
-import BlueskyPoster from './posters/bluesky';
 import Poster from './posters/poster';
-import ThreadsPoster from './posters/threads';
-import LinkedInPoster from './posters/linkedin';
+import SERVICES from './posters/registry';
 
 const CONTENT_DIR = 'content';
 
@@ -17,13 +15,7 @@ const DEBUG = false;
 const main = async () => {
 
   // TODO: Only instantiate stuff we find in the config.
-  const posters: Poster[] = [
-    new BlueskyPoster(),
-    new InstagramPoster(),
-    new MastodonPoster(),
-    new ThreadsPoster(),
-    new LinkedInPoster(),
-  ];
+  const posters: Poster[] = Object.values(SERVICES).map(makePoster => makePoster());
 
   const config = await parseConfig('config.txt');
 
@@ -43,40 +35,7 @@ const main = async () => {
     const tab: Page = await newTabInBrowser(browser);
 
     try {
-      console.log('Loading initial page...');
-      await poster.loadInitialPage(tab);
-      console.log('Maybe dismissing disclaimers...');
-      await poster.maybeDismissDisclaimers(tab);
-      const loggedIn = await poster.isLoggedIn(tab);
-      if (!loggedIn) {
-        console.log('Logging in...');
-        if (!config[poster.name]) {
-          throw new Error('Config does not have login data for ' + poster.name);
-        }
-        await poster.login(tab, config[poster.name][0], config[poster.name][1]);
-      }
-      console.log('Loading "new post" page...');
-      await poster.loadNewPostPage(tab);
-
-      if (bundle.images.length > 0) {
-        for (let image of bundle.images) {
-          console.log('Adding image...');
-          await poster.addOneImage(tab, image.imagePath);
-          if (!(poster instanceof InstagramPoster)) {
-            // For Instagram, we need to add the descriptions at the end.
-            console.log('Adding image description...');
-            await poster.addImageDescription(tab, image.imageDescription);
-          }
-        }
-      }
-      console.log('Adding main text...');
-      await poster.addMainText(tab, bundle.mainText);
-      if (poster instanceof InstagramPoster) {
-        for (let image of bundle.images) {
-          console.log('Adding image description...');
-          await poster.addImageDescription(tab, image.imageDescription);
-        }
-      }
+      await composePost(poster, tab, bundle, config[poster.name]);
     } catch (e) {
       console.log('Caught ' + (e instanceof Error ? e.message : String(e)));
       if (e instanceof TimeoutError) {

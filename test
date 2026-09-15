@@ -1,0 +1,42 @@
+#!/usr/bin/python
+
+# Runs the end-to-end tests (see "End-to-end tests" in CLAUDE.md).
+#
+#   ./test                      all services (those without a verifier are skipped)
+#   ./test mastodon             just one service
+#   ./test mastodon --keep-open leave the browser open afterwards
+
+import importlib.machinery
+import importlib.util
+import os
+import subprocess
+import sys
+
+REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def load_run_script():
+    # Reuse the setup and credential handling from ./run rather than copying it.
+    # Don't leave a __pycache__ behind in the repo for it.
+    sys.dont_write_bytecode = True
+    loader = importlib.machinery.SourceFileLoader("run", os.path.join(REPO_DIR, "run"))
+    spec = importlib.util.spec_from_loader("run", loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module
+
+
+def main():
+    os.chdir(REPO_DIR)
+    run = load_run_script()
+    run.prepare()
+    run.prime_config_file()
+    try:
+        return subprocess.call(["npm", "test", "--"] + sys.argv[1:])
+    finally:
+        # Always restore config.txt, even on failure or Ctrl+C.
+        run.cleanup()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -2,11 +2,19 @@ import { delay } from '../util';
 import { type Page } from 'puppeteer';
 import Poster from './poster';
 
+const COMPOSE_FIELD_SELECTOR = '[aria-label="Empty text field. Type to compose a new post."]';
+
 export default class ThreadsPoster extends Poster {
 
   constructor() {
     super('threads', 'https://www.threads.com/login');
   }
+
+  override isLoggedIn = async (page: Page): Promise<boolean> => {
+    // Logged out, the page shows either the form or a "Log in" link to it.
+    return this.waitForLoginState(
+      page, COMPOSE_FIELD_SELECTOR, 'input[type="password"], ::-p-text(Log in)');
+  };
 
   override login = async (page: Page, user: string, password: string) => {
 
@@ -87,7 +95,7 @@ export default class ThreadsPoster extends Poster {
   };
 
   override loadNewPostPage = async (page: Page) => {
-    const field = await page.waitForSelector('[aria-label="Empty text field. Type to compose a new post."]');
+    const field = await page.waitForSelector(COMPOSE_FIELD_SELECTOR);
     if (field) {
       await field.click();
     }

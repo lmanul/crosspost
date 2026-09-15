@@ -1,10 +1,17 @@
 import Poster from "./poster";
 import { type Page } from 'puppeteer';
 
+const START_POST_BUTTON_SELECTOR = '[aria-label="Start a post"]';
+
 export default class LinkedInPoster extends Poster {
   constructor() {
     super('linkedin', 'https://www.linkedin.com/login');
   }
+
+  override isLoggedIn = async (page: Page): Promise<boolean> => {
+    // A logged-in session gets redirected from /login to the feed.
+    return this.waitForLoginState(page, START_POST_BUTTON_SELECTOR, '#username, #password');
+  };
 
   override login = async (page: Page, user: string, password: string) => {
     await page.type('#username', user);
@@ -13,7 +20,7 @@ export default class LinkedInPoster extends Poster {
   };
 
   override loadNewPostPage = async (page: Page) => {
-    const startPostButton = await page.waitForSelector('[aria-label="Start a post"]');
+    const startPostButton = await page.waitForSelector(START_POST_BUTTON_SELECTOR);
     if (startPostButton) {
       await startPostButton.click();
     }

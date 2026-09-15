@@ -1,7 +1,3 @@
-This is Leonardo.
+Alt text for the first image (in filename order).
 
-This is Michelangelo.
-
-This is Raphael.
-
-This is Donatello.
+Alt text for the second image, separated by one blank line.

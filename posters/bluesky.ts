@@ -3,6 +3,7 @@ import { ElementHandle, type Page } from 'puppeteer';
 import { delay } from '../util';
 
 const ADD_DESCRIPTION_BUTTON_SELECTOR = '[aria-label=\'Add alt text\']';
+const COMPOSE_BUTTON_SELECTOR = '[aria-label="Compose new post"]';
 
 export default class BlueskyPoster extends Poster {
   constructor() {
@@ -21,6 +22,11 @@ export default class BlueskyPoster extends Poster {
     } catch (error) {
 
     }
+  };
+
+  override isLoggedIn = async (page: Page): Promise<boolean> => {
+    // The app renders slowly, so give it the same leeway as the initial load.
+    return this.waitForLoginState(page, COMPOSE_BUTTON_SELECTOR, 'text/Sign in', 30);
   };
 
   override login = async (page: Page, user: string, password: string) => {
@@ -42,7 +48,7 @@ export default class BlueskyPoster extends Poster {
   };
 
   override loadNewPostPage = async (page: Page) => {
-    const composeButton = await page.waitForSelector('[aria-label="Compose new post"]');
+    const composeButton = await page.waitForSelector(COMPOSE_BUTTON_SELECTOR);
     if (composeButton) {
       await composeButton.click();
     }

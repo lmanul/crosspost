@@ -25,8 +25,33 @@ export default class Poster {
 
   maybeDismissDisclaimers = async (page: Page) => { };
 
+  // Must be overridden. Assuming a live session by default meant login() was
+  // silently skipped whenever the session had expired.
+  isLoggedIn = async (page: Page): Promise<boolean> => {
+    throw new Error('isLoggedIn is not implemented for ' + this.name);
+  };
+
+  // Waits until the page shows either a logged-in or a logged-out marker, and
+  // resolves true or false depending on which appeared first.
+  waitForLoginState = async (
+    page: Page,
+    loggedInSelector: string,
+    loggedOutSelector: string,
+    timeoutSeconds: number = 15,
+  ): Promise<boolean> => {
+    const options = { timeout: timeoutSeconds * 1000 };
+    try {
+      return await Promise.any([
+        page.waitForSelector(loggedInSelector, options).then(() => true),
+        page.waitForSelector(loggedOutSelector, options).then(() => false),
+      ]);
+    } catch (e) {
+      throw new Error('Could not tell whether we are logged in to ' + this.name
+        + ': neither "' + loggedInSelector + '" nor "' + loggedOutSelector + '" appeared');
+    }
+  };
+
   // TODO: Implement in subclasses.
-  isLoggedIn = async (page: Page): Promise<boolean> => { return true; };
   login = async (page: Page, user: string, password: string) => { };
   loadNewPostPage = async (page: Page) => { };
 
