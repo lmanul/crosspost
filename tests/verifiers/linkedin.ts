@@ -1,13 +1,8 @@
 import { type HTTPRequest, type Page } from 'puppeteer';
 import {
-  closeAltTextTool,
-  COMPOSER_EDIT_MEDIA_SELECTOR,
   COMPOSER_EDITOR_SELECTOR,
-  COMPOSER_IMAGE_SELECTOR,
-  COMPOSER_POST_BUTTON_SELECTOR,
-  leaveMediaEditor,
-  openAltTextTool,
-  selectEditorImage,
+  getAttachedImages,
+  getPostButton,
 } from '../../posters/linkedin';
 import Verifier from './verifier';
 
@@ -33,11 +28,14 @@ export default class LinkedInVerifier extends Verifier {
   };
 
   override checkMainText = async (page: Page, expected: string) => {
-    const editor = await page.$(COMPOSER_EDITOR_SELECTOR);
-    if (!editor) {
-      throw new Error('no text editor in the composer');
+    const actual = await page.evaluate(sel => {
+      const editor = document.querySelector(sel);
+      return editor ? (editor as HTMLElement).innerText : null;
+    }, COMPOSER_EDITOR_SELECTOR);
+    if (actual === null) {
+      throw new Error('no text editor in the composer (still the right selector? '
+        + COMPOSER_EDITOR_SELECTOR + ')');
     }
-    const actual = await editor.evaluate(el => (el as HTMLElement).innerText);
     if (actual.trim() !== expected) {
       throw new Error(`expected ${JSON.stringify(expected)}, found ${JSON.stringify(actual)}`);
     }
@@ -45,7 +43,7 @@ export default class LinkedInVerifier extends Verifier {
   };
 
   override checkImagesAttached = async (page: Page, expectedCount: number) => {
-    const count = (await page.$$(COMPOSER_IMAGE_SELECTOR)).length;
+    const count = (await getAttachedImages(page)).length;
     if (count !== expectedCount) {
       throw new Error(`expected ${expectedCount} attachments, found ${count}`);
     }
@@ -53,7 +51,7 @@ export default class LinkedInVerifier extends Verifier {
   };
 
   override checkReadyToPost = async (page: Page) => {
-    const button = await page.$(COMPOSER_POST_BUTTON_SELECTOR);
+    const button = await getPostButton(page);
     if (!button) {
       throw new Error('could not find the "Post" button');
     }
@@ -68,34 +66,21 @@ export default class LinkedInVerifier extends Verifier {
     return `"${label}" button is enabled (not clicked)`;
   };
 
+  // LinkedIn copies each saved alt text onto the composer's preview image, so
+  // they can be read without reopening the media editor (and without any risk
+  // of saving something on the way out).
   override checkImageDescriptions = async (page: Page, expected: string[]) => {
-    // Alt texts are only visible in the media editor, so reopen it, read each
-    // one without saving, and come back to the composer.
-    const editMedia = await page.$(COMPOSER_EDIT_MEDIA_SELECTOR);
-    if (!editMedia) {
-      throw new Error('no "Edit media preview" button in the composer');
+    const images = await getAttachedImages(page);
+    if (images.length !== expected.length) {
+      throw new Error(`expected ${expected.length} images, found ${images.length}`);
     }
-    await editMedia.click();
-    // Wait for the editor itself to show: its image list may linger hidden.
-    await page.waitForFunction(count => {
-      const root = document.querySelector('#interop-outlet')?.shadowRoot;
-      const visible = Array.from(root?.querySelectorAll('.media-editor-file-manager__file-preview') ?? [])
-        .filter(el => el.getBoundingClientRect().width > 0);
-      return visible.length === count;
-    }, { timeout: 30000 }, expected.length);
-
     const mismatches: string[] = [];
     for (let i = 0; i < expected.length; i++) {
-      await selectEditorImage(page, i);
-      const field = await openAltTextTool(page);
-      const actual = await field.evaluate(el => (el as HTMLTextAreaElement).value);
-      if (actual.trim() !== expected[i]) {
-        mismatches.push(`#${i + 1}: expected ${JSON.stringify(expected[i])}, found ${JSON.stringify(actual)}`);
+      if (images[i].alt.trim() !== expected[i]) {
+        mismatches.push(
+          `#${i + 1}: expected ${JSON.stringify(expected[i])}, found ${JSON.stringify(images[i].alt)}`);
       }
-      await closeAltTextTool(page, false);
     }
-    await leaveMediaEditor(page);
-
     if (mismatches.length > 0) {
       throw new Error(mismatches.join('; '));
     }

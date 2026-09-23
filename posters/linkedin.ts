@@ -1,34 +1,35 @@
 import Poster from "./poster";
 import { type ElementHandle, type Page } from 'puppeteer';
 
-// LinkedIn's feed is a newer app, but the share box (composer and media editor)
-// is an older Ember app rendered inside #interop-outlet's shadow root. Its class
-// names and icon ids are stable and don't depend on the UI language.
-const INTEROP = '#interop-outlet >>> ';
+// LinkedIn rewrote the feed and the share box as a server-driven React app
+// (markup carries data-sdui-screen / componentkey attributes and hashed class
+// names). The old Ember share box inside #interop-outlet's shadow root is
+// gone: that shadow root now only holds the messaging overlay, so none of the
+// `#interop-outlet >>> .share-*` selectors match any more.
+//
+// The composer is a full page of its own, reachable directly, with a TipTap
+// editor in the light DOM. `componentkey` values are random UUIDs per render,
+// except for a few named ones like ShareBox_textEditor, which is the only
+// stable, language-independent hook on the editor. Everything else here goes
+// by aria-label or exact button text, so it follows the UI language (English
+// once logged in, even though the login page follows the browser locale).
+const COMPOSE_URL = 'https://www.linkedin.com/sharing/compose';
 
-// The feed's "Start a post" box is a link to this URL, whatever the UI language.
-const START_POST_BUTTON_SELECTOR = 'a[href*="/preload/sharebox"]';
+export const COMPOSER_EDITOR_SELECTOR = '[componentkey="ShareBox_textEditor"]';
+const MEDIA_BUTTON_SELECTOR = 'button[aria-label="Media"]';
+const FILE_INPUT_SELECTOR = 'input[type="file"]';
+// In the media editor: adds a further image, and reopens the file picker.
+const EDITOR_ADD_IMAGE_SELECTOR = 'button[aria-label="Add"]';
+// One per image in the media editor's strip.
+export const EDITOR_IMAGE_SELECTOR = '[aria-roledescription="sortable"]';
+export const ALT_TEXT_BUTTON_SELECTOR = 'button[aria-label="Alternative text"]';
+export const ALT_TEXT_FIELD_SELECTOR = 'textarea[placeholder="How would you describe this image?"]';
+// Leaves the alt text tool without saving.
+export const ALT_TEXT_BACK_SELECTOR = 'button[aria-label="Back"]';
+// Reopens the media editor from the composer.
+export const COMPOSER_EDIT_MEDIA_SELECTOR = 'button[aria-label="Edit"]';
 const USER_FIELD_SELECTOR = 'input[type="email"], #username';
 const PASSWORD_FIELD_SELECTOR = 'input[type="password"]';
-
-export const COMPOSER_EDITOR_SELECTOR = INTEROP + '.ql-editor';
-export const COMPOSER_POST_BUTTON_SELECTOR = INTEROP + '.share-actions__primary-action';
-export const COMPOSER_IMAGE_SELECTOR = INTEROP + '.update-components-image__image-link';
-// "Edit media preview", as opposed to "Remove media" (close-small icon).
-export const COMPOSER_EDIT_MEDIA_SELECTOR =
-  INTEROP + '.share-creation-state__preview-container-btn:has(svg[data-test-icon^="edit"])';
-const ADD_MEDIA_BUTTON_SELECTORS = [
-  INTEROP + '.share-promoted-detour-button[aria-label="Add media"]',
-  // Language-independent fallback: "Add media" is the first detour button.
-  INTEROP + '.share-promoted-detour-button',
-];
-
-export const EDITOR_IMAGE_SELECTOR = INTEROP + '.media-editor-file-manager__file-preview';
-const EDITOR_ADD_BUTTON_SELECTOR = INTEROP + 'button:has(svg[data-test-icon="add-medium"])';
-const EDITOR_NEXT_BUTTON_SELECTOR = INTEROP + '.share-box-footer__primary-btn';
-const ALT_TEXT_TOOL_BUTTON_SELECTOR = INTEROP + 'button:has(svg[data-test-icon^="alt-text"])';
-export const ALT_TEXT_FIELD_SELECTOR = INTEROP + 'textarea.media-editor-tools-alt-text__input';
-const ALT_TEXT_EXIT_BUTTON_SELECTOR = INTEROP + '.media-editor-tool-base__footer-exit-button';
 
 // The login page renders two copies of its form (one hidden), with generated
 // ids, so fields are picked by type and visibility.
@@ -40,95 +41,87 @@ const findVisible = async (page: Page, selector: string): Promise<ElementHandle<
   return handle.asElement() as ElementHandle<Element> | null;
 };
 
-// Waits for a share box element to be shown (or gone, with hidden). Don't use
-// page.waitForSelector('#interop-outlet >>> ...') for this: it doesn't notice
-// elements added to the shadow root after the wait starts, and times out even
-// with the element on screen.
-const waitForInterop = async (
-  page: Page,
-  selector: string,
-  { hidden = false, timeout = 30000 } = {},
-): Promise<ElementHandle<Element> | null> => {
-  await page.waitForFunction((innerSelector, wantHidden) => {
-    const el = document.querySelector('#interop-outlet')?.shadowRoot?.querySelector(innerSelector);
-    const rect = el?.getBoundingClientRect();
-    const shown = !!rect && rect.width > 0 && rect.height > 0;
-    return wantHidden ? !shown : shown;
-  }, { timeout }, selector.replace(INTEROP, ''), hidden);
-  return hidden ? null : page.$(selector);
+// Puppeteer's own click() and type() hang on the composer: they evaluate in an
+// isolated world to scroll the element into view, and that call never returns
+// here (Runtime.callFunctionOn times out with the element plainly on screen).
+// Reading the box in the main world and dispatching raw mouse input works.
+export const clickAt = async (page: Page, selector: string) => {
+  const box = await page.evaluate(sel => {
+    const el = document.querySelector(sel);
+    if (!el) {
+      return null;
+    }
+    el.scrollIntoView({ block: 'center' });
+    const rect = el.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }, selector);
+  if (!box) {
+    throw new Error('Nothing to click for ' + selector);
+  }
+  await page.mouse.click(box.x, box.y);
 };
 
-// Leaves the media editor for the composer, if the editor is open. The
-// composer can take several seconds to re-render.
+// Several buttons here have no stable attribute at all and only differ by
+// their text ("Post", "Next", and the alt text tool's "Add", which is not the
+// media editor's icon-only button[aria-label="Add"]).
+export const clickButtonWithText = async (page: Page, text: string) => {
+  const box = await page.evaluate(wanted => {
+    const button = Array.from(document.querySelectorAll('button')).find(candidate =>
+      (candidate.textContent ?? '').trim() === wanted
+      && !candidate.disabled
+      && candidate.getBoundingClientRect().width > 0);
+    if (!button) {
+      return null;
+    }
+    button.scrollIntoView({ block: 'center' });
+    const rect = button.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }, text);
+  if (!box) {
+    throw new Error('No enabled "' + text + '" button');
+  }
+  await page.mouse.click(box.x, box.y);
+};
+
+// The "Post" button has no stable attribute either, so it goes by exact text.
+export const getPostButton = async (page: Page): Promise<ElementHandle<Element> | null> => {
+  const handle = await page.evaluateHandle(() => Array.from(document.querySelectorAll('button'))
+    .find(button => (button.textContent ?? '').trim() === 'Post') ?? null);
+  return handle.asElement() as ElementHandle<Element> | null;
+};
+
+// Each attached image is a blob: preview. In the composer there is exactly one
+// per attachment, and LinkedIn copies each saved alt text onto it, which is
+// how the alt texts can be read back without reopening the media editor.
+export const getAttachedImages = (page: Page): Promise<{ alt: string }[]> => page.evaluate(
+  () => Array.from(document.querySelectorAll('img'))
+    .filter(img => (img.getAttribute('src') ?? '').startsWith('blob:'))
+    .map(img => ({ alt: img.getAttribute('alt') ?? '' })));
+
+// Returns to the composer if the media editor is open. Safe to call either way.
 export const leaveMediaEditor = async (page: Page) => {
-  const nextButton = await page.$(EDITOR_NEXT_BUTTON_SELECTOR);
-  if (!nextButton || !(await nextButton.isVisible())) {
+  const inEditor = await page.evaluate(sel => document.querySelectorAll(sel).length > 0,
+    EDITOR_IMAGE_SELECTOR);
+  if (!inEditor) {
     return;
   }
-  await nextButton.click();
-  await page.waitForFunction(() => {
-    const editor = document.querySelector('#interop-outlet')?.shadowRoot?.querySelector('.ql-editor');
+  await clickButtonWithText(page, 'Next');
+  await page.waitForFunction(sel => {
+    const editor = document.querySelector(sel);
     const rect = editor?.getBoundingClientRect();
     return !!rect && rect.width > 0 && rect.height > 0;
-  }, { timeout: 30000 });
-};
-
-// Selects the index-th image in the media editor.
-export const selectEditorImage = async (page: Page, index: number) => {
-  const images = await page.$$(EDITOR_IMAGE_SELECTOR);
-  if (!images[index]) {
-    throw new Error(`No image #${index + 1} in the media editor (found ${images.length})`);
-  }
-  await images[index].click();
-  await page.waitForFunction(i => {
-    const root = document.querySelector('#interop-outlet')?.shadowRoot;
-    const images = root?.querySelectorAll('.media-editor-file-manager__file-preview') ?? [];
-    return images[i]?.getAttribute('aria-current') === 'true';
-  }, { timeout: 5000 }, index);
-};
-
-// Opens the alt text tool for the selected image and returns its text field.
-export const openAltTextTool = async (page: Page): Promise<ElementHandle<Element>> => {
-  const toolButton = await waitForInterop(page, ALT_TEXT_TOOL_BUTTON_SELECTOR);
-  if (!toolButton) {
-    throw new Error('No alt text button in the media editor');
-  }
-  await toolButton.click();
-  const field = await waitForInterop(page, ALT_TEXT_FIELD_SELECTOR);
-  if (!field) {
-    throw new Error('No alt text field in the media editor');
-  }
-  return field;
-};
-
-// Leaves the alt text tool: saving applies the text, otherwise it is discarded.
-export const closeAltTextTool = async (page: Page, save: boolean) => {
-  const button = save
-    // The tool's only primary button ("Add") sits next to the text field.
-    ? (await page.evaluateHandle(() => {
-      const root = document.querySelector('#interop-outlet')?.shadowRoot;
-      let el: Element | null = root?.querySelector('textarea.media-editor-tools-alt-text__input') ?? null;
-      while (el && !el.querySelector('button.artdeco-button--primary')) {
-        el = el.parentElement;
-      }
-      return el?.querySelector('button.artdeco-button--primary') ?? null;
-    })).asElement() as ElementHandle<Element> | null
-    : await page.$(ALT_TEXT_EXIT_BUTTON_SELECTOR);
-  if (!button) {
-    throw new Error(`No ${save ? 'save' : 'exit'} button in the alt text tool`);
-  }
-  await button.click();
-  await waitForInterop(page, ALT_TEXT_FIELD_SELECTOR, { hidden: true });
+  }, { timeout: 30000 }, COMPOSER_EDITOR_SELECTOR);
 };
 
 export default class LinkedInPoster extends Poster {
   constructor() {
-    super('linkedin', 'https://www.linkedin.com/login');
+    // Going straight to the composer doubles as the login check: logged in it
+    // renders the share box, logged out it redirects to the sign-in page.
+    super('linkedin', COMPOSE_URL);
   }
 
   override isLoggedIn = async (page: Page): Promise<boolean> => {
-    // A logged-in session gets redirected from /login to the feed.
-    return this.waitForLoginState(page, START_POST_BUTTON_SELECTOR, PASSWORD_FIELD_SELECTOR);
+    return this.waitForLoginState(page, COMPOSER_EDITOR_SELECTOR, PASSWORD_FIELD_SELECTOR, 30);
   };
 
   override login = async (page: Page, user: string, password: string) => {
@@ -152,56 +145,61 @@ export default class LinkedInPoster extends Poster {
   };
 
   override loadNewPostPage = async (page: Page) => {
-    const startPostButton = await page.waitForSelector(START_POST_BUTTON_SELECTOR);
-    if (startPostButton) {
-      await startPostButton.click();
+    // Logging in lands on the feed, so come back to the composer. When
+    // isLoggedIn already found the editor this is a no-op.
+    if (!(await page.$(COMPOSER_EDITOR_SELECTOR))) {
+      await page.goto(COMPOSE_URL, { timeout: 60000 });
     }
-    await waitForInterop(page, COMPOSER_EDITOR_SELECTOR);
+    await page.waitForSelector(COMPOSER_EDITOR_SELECTOR, { timeout: 30000 });
   };
 
-  // The first image is added from the composer, which then switches to the
-  // media editor; later images are added from the editor itself.
-  override getAddImageButton = async (page: Page): Promise<ElementHandle<Element> | null> => {
-    if (this.uploadedImageCount > 0) {
-      return waitForInterop(page, EDITOR_ADD_BUTTON_SELECTOR);
-    }
-    for (const selector of ADD_MEDIA_BUTTON_SELECTORS) {
-      const button = await page.$(selector);
-      if (button) {
-        return button;
-      }
-    }
-    return null;
+  // There is no file input in the page until the picker is asked for: the
+  // click creates one, appends it to <body> zero-sized, and would open a
+  // native OS dialog that Puppeteer cannot intercept (waitForFileChooser never
+  // fires for it). Uploading straight to that input, the way the Mastodon and
+  // Threads posters do, skips the dialog entirely.
+  override addOneImage = async (page: Page, imgPath: string) => {
+    const inputsBefore = await page.$$(FILE_INPUT_SELECTOR);
+    // The first image is added from the composer, later ones from the editor.
+    await clickAt(page, this.uploadedImageCount === 0
+      ? MEDIA_BUTTON_SELECTOR
+      : EDITOR_ADD_IMAGE_SELECTOR);
+    await page.waitForFunction((selector, count) =>
+      document.querySelectorAll(selector).length > count,
+      { timeout: 30000 }, FILE_INPUT_SELECTOR, inputsBefore.length);
+
+    const inputs = await page.$$(FILE_INPUT_SELECTOR);
+    await inputs[inputs.length - 1].uploadFile(imgPath);
+    await this.waitForImageAdded(page);
+    this.uploadedImageCount++;
+    console.log('Added ' + this.uploadedImageCount + ' images.');
   };
 
-  // A new image is appended to the editor's list and becomes the selected one.
   override waitForImageAdded = async (page: Page) => {
-    await page.waitForFunction(count => {
-      const root = document.querySelector('#interop-outlet')?.shadowRoot;
-      const images = root?.querySelectorAll('.media-editor-file-manager__file-preview') ?? [];
-      const last = images[count - 1];
-      return images.length === count && last.getAttribute('aria-current') === 'true'
-        && last.getBoundingClientRect().width > 0;
-    }, { timeout: 30000 }, this.uploadedImageCount + 1);
+    await page.waitForFunction((selector, count) =>
+      document.querySelectorAll(selector).length === count,
+      { timeout: 60000 }, EDITOR_IMAGE_SELECTOR, this.uploadedImageCount + 1);
   };
 
+  // Called right after each upload, while the new image is the selected one.
   override addImageDescription = async (page: Page, description: string) => {
-    // Called right after each upload, while the new image is selected.
-    const field = await openAltTextTool(page);
-    await field.click();
-    await page.keyboard.type(description);
-    await closeAltTextTool(page, true);
+    await clickAt(page, ALT_TEXT_BUTTON_SELECTOR);
+    await page.waitForSelector(ALT_TEXT_FIELD_SELECTOR, { timeout: 30000 });
+    await clickAt(page, ALT_TEXT_FIELD_SELECTOR);
+    await page.keyboard.type(description, { delay: 20 });
+    // The tool's own "Add" button saves; it stays disabled while the field is
+    // empty, so it is only clickable once something has been typed.
+    await clickButtonWithText(page, 'Add');
+    await page.waitForFunction(selector => !document.querySelector(selector),
+      { timeout: 30000 }, ALT_TEXT_FIELD_SELECTOR);
     this.addedImageDescriptionCount++;
   };
 
   override addMainText = async (page: Page, text: string) => {
     // With images, we're still in the media editor.
     await leaveMediaEditor(page);
-    const editor = await waitForInterop(page, COMPOSER_EDITOR_SELECTOR);
-    if (!editor) {
-      throw new Error('No text editor in the LinkedIn composer');
-    }
-    await editor.click();
-    await page.keyboard.type(text);
+    await page.waitForSelector(COMPOSER_EDITOR_SELECTOR, { timeout: 30000 });
+    await clickAt(page, COMPOSER_EDITOR_SELECTOR);
+    await page.keyboard.type(text, { delay: 20 });
   };
 }

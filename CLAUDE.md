@@ -138,26 +138,51 @@ when adding a poster.
   moving, and retries the click once. Threads also copies saved alt texts into
   each preview's `img[alt]`, which could let the verifier read them without
   opening the editor.
-- **LinkedIn**'s feed is a newer React app with hashed class names, but the
-  share box (composer and media editor) is an older Ember app rendered inside
-  `#interop-outlet`'s **shadow root**, where `document.querySelector` can't see
-  it. Reach it with Puppeteer's pierce combinator: `#interop-outlet >>> .ql-editor`.
-  Its classes (`share-actions__primary-action`, `media-editor-*`) and icon ids
-  (`svg[data-test-icon="alt-text-medium"]`, `add-medium`, `edit-small`) are
-  stable and language-independent; prefer them over labels. Flow: the feed's
-  `a[href*="/preload/sharebox"]` opens the composer; "Add media" opens a file
-  chooser and switches to the media editor; later images come from the editor's
-  own "Add" and become the selected image; alt text is a tool on the selected
-  image (textarea, then the primary "Add" button); "Next" returns to the
-  composer, which can take several seconds to re-render. Alt texts can only be
-  read back by reopening the editor ("Edit media preview"). Images aren't
-  uploaded until "Post" is clicked. Wait for share box elements with
-  `waitForInterop` in [posters/linkedin.ts](posters/linkedin.ts), which polls
-  the shadow root and also requires visibility. (On Puppeteer 23,
-  `page.waitForSelector('#interop-outlet >>> …')` never noticed elements added
-  to the shadow root later and timed out with the element on screen; Puppeteer
-  25 no longer has that bug, but `waitForInterop` stays. Immediate
-  `page.$('#interop-outlet >>> …')` queries have always been fine.)
+- **LinkedIn** rewrote the feed and the share box as a server-driven React app
+  (2026-09-23). Everything the old poster relied on is gone: the feed's
+  `a[href*="/preload/sharebox"]` no longer exists (the "Start a post" control is
+  now a `div[role="button"]` with hashed classes, recognizable by the
+  `#draft-text-replaceable-component` inside it), and `#interop-outlet`'s shadow
+  root now holds only the messaging overlay, so every `#interop-outlet >>> …`
+  selector matches nothing. Markup carries `data-sdui-screen`, `data-testid` and
+  `componentkey` attributes; `componentkey` values are random UUIDs per render
+  except for a few named ones.
+  The composer is now its own page: `page.goto('https://www.linkedin.com/sharing/compose')`
+  opens it directly, which is why that is the poster's `baseUrl` — it doubles as
+  the login check. The text field is a TipTap editor in the **light DOM** at
+  `[componentkey="ShareBox_textEditor"]`, the only stable, language-independent
+  hook on it. The "Post" button has no stable attribute and goes by exact text.
+  **Two traps.** Puppeteer's `click()` and `type()` *hang* on this page: they
+  evaluate in an isolated world to scroll the element into view, and that call
+  never returns (`Runtime.callFunctionOn timed out`) with the element plainly on
+  screen. Main-world `page.evaluate` stays fast, so read the element's box there
+  and dispatch raw mouse input — that is what `clickAt` in
+  [posters/linkedin.ts](posters/linkedin.ts) does. And a composer holding text
+  arms a **beforeunload dialog**: navigating away then blocks the renderer
+  behind a native modal that CDP cannot dismiss (`Page.handleJavaScriptDialog`
+  can't even be delivered), which wedges the tab until someone clicks it by
+  hand. Clear the editor before navigating away.
+  **Images**: there is no `input[type=file]` in the page until the picker is
+  asked for. Clicking `button[aria-label="Media"]` (first image) or the media
+  editor's `button[aria-label="Add"]` (later ones) creates one, appends it to
+  `<body>` zero-sized, and would open a native OS dialog that Puppeteer cannot
+  intercept — `waitForFileChooser()` never fires for it, even when interception
+  is registered a second before the click. Don't chase the dialog: upload
+  straight to the newly created input with `uploadFile`, exactly as the Mastodon
+  and Threads posters do. Wait for the new input to appear (count it before the
+  click), then use the **last** one.
+  Flow: upload switches to the media editor, where each image is an
+  `[aria-roledescription="sortable"]` in the strip (a reliable image count) and
+  the just-added one is selected. Alt text is `button[aria-label="Alternative
+  text"]` → `textarea[placeholder="How would you describe this image?"]` → the
+  tool's own **"Add"** button, which is disabled until the field is non-empty;
+  that is a plain button matched by exact text, not the icon-only
+  `button[aria-label="Add"]` that adds another image. `button[aria-label="Back"]`
+  leaves the tool without saving. "Next" returns to the composer, and
+  `button[aria-label="Edit"]` reopens the editor from there.
+  Usefully, the composer copies each saved alt text onto its preview
+  `img[alt]` (one blob: image per attachment), so the verifier reads them
+  straight from the composer instead of reopening the editor.
 - **LinkedIn login**: the logged-out pages follow the browser locale (Japanese
   here), even though the logged-in UI is English. The login page has no
   `<form>` and renders two copies of its fields, one hidden, with generated
@@ -263,8 +288,10 @@ a `./run` browser window is still open (Chrome's profile lock).
   and adds a "nothing published" check. It detects, it does not block —
   verifiers themselves must only *read* the submit button, never click it.
 
-Status: all five services pass, each re-run after the Puppeteer 25 / Chrome 153
-upgrade (2026-09-15). [tests/verifiers/mastodon.ts](tests/verifiers/mastodon.ts) passes.
+Status: all five services pass. The four others were re-run after the
+Puppeteer 25 / Chrome 153 upgrade (2026-09-15); LinkedIn passes again after its
+share box rewrite (2026-09-23).
+[tests/verifiers/mastodon.ts](tests/verifiers/mastodon.ts) passes.
 [tests/verifiers/bluesky.ts](tests/verifiers/bluesky.ts) passes too; it is
 registered under the poster name `bsky` (so `./test bsky`, not `./test bluesky`).
 Bluesky's web app exposes React Native test ids as `data-testid`
@@ -274,10 +301,10 @@ over `aria-label`s, several of which are ambiguous.
 reuses the poster's alt text helpers, counts one "Remove" button per image, and
 reads each alt text by opening the editor and leaving with "Back", so nothing is
 saved.
-[tests/verifiers/linkedin.ts](tests/verifiers/linkedin.ts) passes as well (first
-run 2026-09-15). It reads alt texts by reopening the media editor and leaving
-each alt text tool without saving, then returns to the composer; it reuses the
-poster's exported share box helpers. Its `isPublishRequest` deliberately ignores
+[tests/verifiers/linkedin.ts](tests/verifiers/linkedin.ts) passes too, re-run
+after the share box rewrite (2026-09-23). It reads the alt texts straight off
+the composer's preview images rather than reopening the media editor, so it
+cannot accidentally save anything. Its `isPublishRequest` deliberately ignores
 the POSTs that merely open the composer (`voyagerContentcreationDashSharebox`,
 `sharing.LaunchShareboxTracking`); the actual create-post request has never been
 observed, since nothing was ever posted, so its patterns are educated guesses.
