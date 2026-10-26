@@ -5,7 +5,8 @@ import Poster from './poster';
 const COMPOSE_FIELD_SELECTOR = '[aria-label="Empty text field. Type to compose a new post."]';
 const DIALOG_BUTTON_SELECTOR = '[role="dialog"] [role="button"]';
 
-// Threads' markup has few stable labels, so controls are matched on their text.
+// Threads' markup has few stable labels, so controls are matched on their text,
+// or on their aria-label for icon-only ones (e.g. "Attachment actions").
 export const findByText = async (
   page: Page,
   selector: string,
@@ -13,8 +14,9 @@ export const findByText = async (
 ): Promise<ElementHandle<Element>[]> => {
   const matches: ElementHandle<Element>[] = [];
   for (const handle of await page.$$(selector)) {
-    const content = await handle.evaluate(el => (el.textContent ?? '').trim());
-    if (typeof text === 'string' ? content === text : text.test(content)) {
+    const labels = await handle.evaluate(el =>
+      [el.textContent ?? '', el.getAttribute('aria-label') ?? ''].map(s => s.trim()));
+    if (labels.some(label => typeof text === 'string' ? label === text : text.test(label))) {
       matches.push(handle);
     }
   }

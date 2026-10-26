@@ -127,8 +127,9 @@ when adding a poster.
   than a file chooser.
 - **Threads** has a large commented-out `getAddImageButton` block documenting a
   failed attempt at clicking the attach-media SVG; it currently uses the hidden
-  file input instead. Alt text lives behind each image's "•••" button (text
-  "Attachment actions") → "Add alt text" menu item; the editor then replaces
+  file input instead. Alt text lives behind each image's "•••" button
+  (`aria-label="Attachment actions"`; until 2026-10 that was its text, so
+  `findByText` matches either) → "Add alt text" menu item; the editor then replaces
   the composer view inside the same dialog (no new `role="dialog"`), with
   "Back" (discard) and "Done" (save). `openAltTextEditor` /
   `closeAltTextEditor` in [posters/threads.ts](posters/threads.ts) are exported
